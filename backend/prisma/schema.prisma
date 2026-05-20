@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      Plan     @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  subscriptions Subscription[]
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  password       String
+  name           String?
+  role           Role         @default(MEMBER)
+  emailVerified  Boolean      @default(false)
+  refreshToken   String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  portfolios     Portfolio[]
+  alerts         Alert[]
+  watchlistItems WatchlistItem[]
+  notes          StockNote[]
+}
+
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+  status               SubscriptionStatus @default(INACTIVE)
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model Portfolio {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId   String
+  user     User      @relation(fields: [userId], references: [id])
+  holdings Holding[]
+}
+
+model Holding {
+  id           String   @id @default(cuid())
+  symbol       String
+  companyName  String?
+  quantity     Float
+  avgBuyPrice  Float
+  currency     String   @default("USD")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  portfolioId  String
+  portfolio    Portfolio     @relation(fields: [portfolioId], references: [id])
+  transactions Transaction[]
+
+  @@unique([portfolioId, symbol])
+}
+
+model Transaction {
+  id        String          @id @default(cuid())
+  type      TransactionType
+  symbol    String
+  quantity  Float
+  price     Float
+  total     Float
+  date      DateTime        @default(now())
+  notes     String?
+
+  holdingId String
+  holding   Holding @relation(fields: [holdingId], references: [id])
+}
+
+model Alert {
+  id         String      @id @default(cuid())
+  symbol     String
+  type       AlertType
+  condition  AlertCond
+  threshold  Float
+  message    String?
+  triggered  Boolean     @default(false)
+  triggeredAt DateTime?
+  active     Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+enum TransactionType {
+  BUY
+  SELL
+}
+
+enum AlertType {
+  PRICE
+  PERCENT_CHANGE
+  VOLUME
+}
+
+enum AlertCond {
+  ABOVE
+  BELOW
+}
+
+model WatchlistItem {
+  id          String   @id @default(cuid())
+  symbol      String
+  companyName String?
+  addedAt     DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([userId, symbol])
+}
+
+model StockNote {
+  id        String   @id @default(cuid())
+  symbol    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}

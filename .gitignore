@@ -1,0 +1,38 @@
+# ── Dépendances ─────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Environnement (NE JAMAIS committer) ─────────────────────
+.env
+.env.local
+.env.*.local
+.env.production
+
+# ── Build outputs ────────────────────────────────────────────
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Prisma ───────────────────────────────────────────────────
+backend/prisma/migrations/*/migration_lock.toml
+
+# ── IDE / OS ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/
+
+# ── Tests ────────────────────────────────────────────────────
+coverage/
+
+# ── Docker data ──────────────────────────────────────────────
+docker-data/

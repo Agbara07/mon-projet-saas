@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { createChart, ColorType, LineStyle } from 'lightweight-charts'
+import { createChart, ColorType, LineStyle, LineSeries } from 'lightweight-charts'
 import { calcRSI } from '@/lib/finance'
 import { cn } from '@/lib/utils'
 
 interface RSIPanelProps {
-  closes: number[]
-  dates:  string[]
-  height?: number
+  closes:    number[]
+  dates:     string[]
+  height?:   number
   className?: string
 }
 
@@ -28,19 +28,20 @@ export default function RSIPanel({ closes, dates, height = 100, className }: RSI
     })
 
     const rsi = calcRSI(closes)
+    const validData = dates
+      .map((d, i) => ({ date: d, rsi: rsi[i] }))
+      .filter(p => p.rsi != null)
 
-    // Zones 30 / 70
-    const ob = chart.addLineSeries({ color: '#fca5a5', lineWidth: 1, lineStyle: LineStyle.Dashed, title: '70', priceLineVisible: false })
-    const os = chart.addLineSeries({ color: '#86efac', lineWidth: 1, lineStyle: LineStyle.Dashed, title: '30', priceLineVisible: false })
-    const rsiSeries = chart.addLineSeries({ color: '#6366f1', lineWidth: 2, title: 'RSI', priceLineVisible: false })
+    const obSerie  = chart.addSeries(LineSeries, { color: '#fca5a5', lineWidth: 1, lineStyle: LineStyle.Dashed, title: '70', priceLineVisible: false })
+    const osSerie  = chart.addSeries(LineSeries, { color: '#86efac', lineWidth: 1, lineStyle: LineStyle.Dashed, title: '30', priceLineVisible: false })
+    const rsiSerie = chart.addSeries(LineSeries, { color: '#6366f1', lineWidth: 2, title: 'RSI', priceLineVisible: false })
 
-    const validData = dates.map((d, i) => ({ date: d, rsi: rsi[i] })).filter(p => p.rsi != null)
-
-    ob.setData(validData.map(p => ({ time: p.date as any, value: 70 })))
-    os.setData(validData.map(p => ({ time: p.date as any, value: 30 })))
-    rsiSeries.setData(validData.map(p => ({ time: p.date as any, value: p.rsi! })))
+    obSerie.setData(validData.map(p => ({ time: p.date as any, value: 70 })))
+    osSerie.setData(validData.map(p => ({ time: p.date as any, value: 30 })))
+    rsiSerie.setData(validData.map(p => ({ time: p.date as any, value: p.rsi! })))
 
     chart.timeScale().fitContent()
+
     const ro = new ResizeObserver(() => { if (ref.current) chart.applyOptions({ width: ref.current.clientWidth }) })
     ro.observe(ref.current)
     return () => { ro.disconnect(); chart.remove() }

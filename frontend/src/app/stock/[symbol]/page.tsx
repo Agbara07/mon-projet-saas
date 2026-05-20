@@ -34,7 +34,7 @@ interface Profile {
   revenueGrowth?: number; earningsGrowth?: number
   nextEarningsDate?: string; currency: string
 }
-interface HistPoint { date: string; close: number; volume: number }
+interface HistPoint { date: string; open: number; high: number; low: number; close: number; volume: number }
 interface NewsItem   { title: string; publisher: string; link: string; publishedAt: string; thumbnail?: string }
 
 const PERIODS = ['5d','1mo','3mo','6mo','1y','5y'] as const

@@ -124,10 +124,16 @@ export const brvmCacheStatus = handle(async (_req, res) => {
 
 // POST /market/brvm/refresh — déclenché par GitHub Actions (CRON_SECRET)
 export const brvmRefresh = async (req: Request, res: Response) => {
-  const secret = req.headers['x-cron-secret']
-  const expected = process.env.CRON_SECRET
-  if (!expected || secret !== expected) {
-    return res.status(401).json({ message: 'CRON_SECRET invalide ou manquant' })
+  const received = ((req.headers['x-cron-secret'] as string) ?? '').trim()
+  const expected = (process.env.CRON_SECRET ?? '').trim()
+  if (!expected || received !== expected) {
+    // Debug sans exposer les valeurs
+    return res.status(401).json({
+      message:       'CRON_SECRET invalide ou manquant',
+      receivedLen:   received.length,
+      expectedLen:   expected.length,
+      envVarPresent: !!process.env.CRON_SECRET,
+    })
   }
   try {
     const result = await refreshBRVMData()

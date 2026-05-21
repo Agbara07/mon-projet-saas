@@ -2,35 +2,31 @@
 
 import { useState, useEffect } from 'react'
 import { useDebounceValue } from 'usehooks-ts'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Search, SlidersHorizontal, TrendingUp, TrendingDown, ArrowUpDown, Plus, X, Zap } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import {
+  Search, TrendingUp, TrendingDown, Plus, X,
+  SlidersHorizontal, RefreshCw, Star, StarOff, ChevronDown, ChevronUp,
+} from 'lucide-react'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { Input } from '@/components/ui/Input'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
 interface StockResult {
-  symbol: string; name: string; price: number; change: number
-  changePercent: number; volume: number; marketCap?: number
-  pe?: number; week52High?: number; week52Low?: number; currency: string
+  symbol:string; name:string; price:number; change:number
+  changePercent:number; volume:number; marketCap?:number
+  pe?:number; week52High?:number; week52Low?:number; currency:string
 }
 interface Filters { minPrice:string; maxPrice:string; minMarketCap:string; maxPE:string; minChangePercent:string; maxChangePercent:string }
 
 const EMPTY: Filters = { minPrice:'', maxPrice:'', minMarketCap:'', maxPE:'', minChangePercent:'', maxChangePercent:'' }
 
 const PRESETS = [
-  { label:'🚀 Top gainers',  icon:<TrendingUp  size={12}/>, filters:{ ...EMPTY, minChangePercent:'2' } },
-  { label:'📉 Top losers',   icon:<TrendingDown size={12}/>, filters:{ ...EMPTY, maxChangePercent:'-2' } },
-  { label:'💎 Value stocks', icon:<Zap size={12}/>,         filters:{ ...EMPTY, maxPE:'15', minMarketCap:'10000000000' } },
-  { label:'🏢 Large caps',   icon:<Zap size={12}/>,         filters:{ ...EMPTY, minMarketCap:'100000000000' } },
+  { label:'TOP GAINERS',  tag:'+2%↑',  color:'text-[var(--fin-green)]', bg:'bg-[var(--fin-green-bg)]', filters:{ ...EMPTY, minChangePercent:'2' } },
+  { label:'TOP LOSERS',   tag:'-2%↓',  color:'text-[var(--fin-red)]',   bg:'bg-[var(--fin-red-bg)]',   filters:{ ...EMPTY, maxChangePercent:'-2' } },
+  { label:'VALUE',        tag:'P/E<15', color:'text-[var(--fin-amber)]', bg:'bg-[var(--fin-amber-bg)]', filters:{ ...EMPTY, maxPE:'15', minMarketCap:'10000000000' } },
+  { label:'LARGE CAPS',   tag:'>100B',  color:'text-[var(--fin-blue)]',  bg:'bg-[var(--fin-blue-bg)]',  filters:{ ...EMPTY, minMarketCap:'100000000000' } },
 ]
-
-type SortKey = keyof StockResult
-type SortDir = 'asc' | 'desc'
 
 function fmt(n?: number) {
   if (n == null) return '—'
@@ -40,15 +36,29 @@ function fmt(n?: number) {
   return `$${n.toFixed(0)}`
 }
 
+type SortKey = keyof StockResult
+type SortDir = 'asc'|'desc'
+
+const COLS: { key: SortKey; label: string; right?: boolean }[] = [
+  { key:'symbol',        label:'SYMBOLE'  },
+  { key:'price',         label:'PRIX',         right:true },
+  { key:'changePercent', label:'VAR%',          right:true },
+  { key:'volume',        label:'VOLUME',        right:true },
+  { key:'marketCap',     label:'MARKET CAP',    right:true },
+  { key:'pe',            label:'P/E',           right:true },
+  { key:'week52High',    label:'52S HAUT',       right:true },
+  { key:'week52Low',     label:'52S BAS',        right:true },
+]
+
 export default function ScreenerPage() {
-  const [filters, setFilters]     = useState<Filters>(EMPTY)
-  const [results, setResults]     = useState<StockResult[]>([])
-  const [loading, setLoading]     = useState(false)
-  const [ran, setRan]             = useState(false)
-  const [sortKey, setSortKey]     = useState<SortKey>('marketCap')
-  const [sortDir, setSortDir]     = useState<SortDir>('desc')
-  const [showFilters, setShowFilters] = useState(true)
-  const [watchlist, setWatchlist] = useState<Set<string>>(new Set())
+  const [filters,      setFilters]     = useState<Filters>(EMPTY)
+  const [results,      setResults]     = useState<StockResult[]>([])
+  const [loading,      setLoading]     = useState(false)
+  const [ran,          setRan]         = useState(false)
+  const [sortKey,      setSortKey]     = useState<SortKey>('marketCap')
+  const [sortDir,      setSortDir]     = useState<SortDir>('desc')
+  const [showFilters,  setShowFilters] = useState(false)
+  const [watchlist,    setWatchlist]   = useState<Set<string>>(new Set())
 
   const runScreener = async (overrides?: Partial<Filters>) => {
     setLoading(true); setRan(true)
@@ -58,216 +68,219 @@ export default function ScreenerPage() {
     try {
       const r = await api.get(`/market/screener?${params}`)
       setResults(r.data)
-      toast.success(`${r.data.length} résultat${r.data.length>1?'s':''} trouvé${r.data.length>1?'s':''}`)
-    } catch { toast.error('Erreur lors de la recherche') }
+    } catch { toast.error('Erreur screener') }
     setLoading(false)
   }
 
-  const sort = (key: SortKey) => {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+  const handleSort = (key: SortKey) => {
+    if (key === sortKey) setSortDir(d => d==='asc'?'desc':'asc')
     else { setSortKey(key); setSortDir('desc') }
   }
 
-  const sorted = [...results].sort((a, b) => {
-    const va = (a[sortKey] ?? 0) as number
-    const vb = (b[sortKey] ?? 0) as number
-    return sortDir === 'desc' ? vb - va : va - vb
+  const sorted = [...results].sort((a,b) => {
+    const va = (a[sortKey]??0) as number, vb = (b[sortKey]??0) as number
+    return sortDir==='desc' ? vb-va : va-vb
   })
 
   const toggleWatchlist = async (s: StockResult) => {
     if (watchlist.has(s.symbol)) {
       await api.delete(`/watchlist/${s.symbol}`)
-      setWatchlist(p => { const n = new Set(p); n.delete(s.symbol); return n })
+      setWatchlist(p => { const n=new Set(p); n.delete(s.symbol); return n })
       toast.success(`${s.symbol} retiré`)
     } else {
-      await api.post('/watchlist', { symbol: s.symbol, companyName: s.name })
+      await api.post('/watchlist', { symbol:s.symbol, companyName:s.name })
       setWatchlist(p => new Set(p).add(s.symbol))
-      toast.success(`${s.symbol} ajouté à la watchlist`)
+      toast.success(`${s.symbol} ajouté`)
     }
   }
 
-  const COLS: { key: SortKey; label: string; right?: boolean }[] = [
-    { key:'symbol',        label:'Titre' },
-    { key:'price',         label:'Prix',      right:true },
-    { key:'changePercent', label:'Variation', right:true },
-    { key:'volume',        label:'Volume',    right:true },
-    { key:'marketCap',     label:'Cap.',       right:true },
-    { key:'pe',            label:'P/E',        right:true },
-    { key:'week52High',    label:'52s haut',   right:true },
-    { key:'week52Low',     label:'52s bas',    right:true },
-  ]
-
-  const activeFilterCount = Object.values(filters).filter(v => v !== '').length
+  const activeCount = Object.values(filters).filter(v => v !== '').length
 
   return (
-    <div className="p-6 space-y-5 min-h-screen">
+    <div className="flex flex-col h-full">
 
-      {/* Header */}
-      <motion.div initial={{ opacity:0, y:-10 }} animate={{ opacity:1, y:0 }} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-            <Search size={22} className="text-purple-500"/> Screener
-          </h1>
-          <p className="text-gray-500 text-sm mt-0.5">Filtrez les meilleures opportunités de marché</p>
-        </div>
-        <Button variant="outline" size="sm" leftIcon={<SlidersHorizontal size={13}/>}
-          onClick={() => setShowFilters(p=>!p)}>
-          Filtres {activeFilterCount > 0 && <Badge variant="blue" size="sm" className="ml-1">{activeFilterCount}</Badge>}
-        </Button>
-      </motion.div>
+      {/* Status bar */}
+      <div className={cn('flex items-center gap-3 px-4 h-9 flex-shrink-0 border-b border-[var(--fin-border)]','bg-[var(--fin-panel)]')}>
+        <Search size={11} strokeWidth={1.5} className="text-[var(--fin-t3)]"/>
+        <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">Screener</span>
+        <div className="w-px h-3.5 bg-[var(--fin-border)]"/>
 
-      {/* Presets */}
-      <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} className="flex gap-2 flex-wrap">
+        {/* Presets */}
         {PRESETS.map(p => (
-          <motion.button key={p.label} whileHover={{ y:-2 }} whileTap={{ scale:.97 }}
-            onClick={() => { setFilters(p.filters); runScreener(p.filters) }}
-            className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:shadow-sm transition-all shadow-sm">
-            {p.icon} {p.label}
-          </motion.button>
+          <button key={p.label} onClick={() => { setFilters(p.filters); runScreener(p.filters) }}
+            className={cn('flex items-center gap-1 h-5 px-2 rounded text-[9px] font-bold font-mono transition-colors', p.bg, p.color, 'hover:opacity-80')}>
+            {p.label} <span className="opacity-70">{p.tag}</span>
+          </button>
         ))}
-      </motion.div>
 
-      {/* Filters panel */}
+        <div className="flex-1"/>
+        {ran && !loading && (
+          <span className="text-[9px] font-mono text-[var(--fin-t3)]">
+            <span className="text-[var(--fin-t1)] font-bold">{sorted.length}</span> résultat{sorted.length>1?'s':''}
+          </span>
+        )}
+        <div className="w-px h-3.5 bg-[var(--fin-border)]"/>
+        <button onClick={() => setShowFilters(v => !v)}
+          className={cn(
+            'flex items-center gap-1.5 h-7 px-2.5 rounded text-[11px] transition-colors',
+            showFilters
+              ? 'bg-[var(--fin-active)] text-[var(--fin-blue)] border border-[var(--fin-blue)] border-opacity-30'
+              : 'text-[var(--fin-t3)] hover:text-[var(--fin-t1)] hover:bg-[var(--fin-hover)] border border-[var(--fin-border)]'
+          )}>
+          <SlidersHorizontal size={11} strokeWidth={1.5}/>
+          Filtres{activeCount > 0 && <span className="font-bold text-[var(--fin-amber)]">({activeCount})</span>}
+        </button>
+        <button onClick={() => runScreener()}
+          className="flex items-center gap-1.5 h-7 px-3 rounded text-[11px] font-medium bg-[var(--fin-blue)] text-white hover:opacity-90 transition-opacity">
+          <Search size={11}/> Analyser
+        </button>
+      </div>
+
+      {/* Filter panel */}
       <AnimatePresence>
         {showFilters && (
-          <motion.div initial={{ opacity:0, height:0 }} animate={{ opacity:1, height:'auto' }}
-            exit={{ opacity:0, height:0 }} transition={{ duration:.25 }}>
-            <Card className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <p className="font-bold text-gray-900 text-sm">Filtres personnalisés</p>
-                {activeFilterCount > 0 && (
-                  <button onClick={() => setFilters(EMPTY)}
-                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 transition-colors">
-                    <X size={12}/> Réinitialiser
+          <motion.div initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}} exit={{opacity:0,height:0}}
+            className="overflow-hidden">
+            <div className={cn('px-4 py-3 border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">Filtres personnalisés</span>
+                {activeCount > 0 && (
+                  <button onClick={() => setFilters(EMPTY)} className="flex items-center gap-1 text-[9px] text-[var(--fin-t3)] hover:text-[var(--fin-red)] transition-colors">
+                    <X size={9}/> RÉINITIALISER
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                 {[
                   { key:'minPrice',         label:'Prix min ($)' },
                   { key:'maxPrice',         label:'Prix max ($)' },
                   { key:'minMarketCap',     label:'Cap. min ($)' },
                   { key:'maxPE',            label:'P/E max' },
-                  { key:'minChangePercent', label:'Variation min (%)' },
-                  { key:'maxChangePercent', label:'Variation max (%)' },
+                  { key:'minChangePercent', label:'Var. min (%)' },
+                  { key:'maxChangePercent', label:'Var. max (%)' },
                 ].map(({ key, label }) => (
-                  <Input key={key} label={label} type="number"
-                    value={filters[key as keyof Filters]}
-                    onChange={e => setFilters(p => ({...p, [key]: e.target.value}))}
-                    placeholder="—"/>
+                  <div key={key}>
+                    <label className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-wide block mb-1">{label}</label>
+                    <input type="number"
+                      value={filters[key as keyof Filters]}
+                      onChange={e => setFilters(p => ({...p,[key]:e.target.value}))}
+                      placeholder="—"
+                      className={cn(
+                        'w-full h-7 px-2 text-xs font-mono rounded border transition-colors',
+                        'bg-[var(--fin-panel)] border-[var(--fin-border)] text-[var(--fin-t1)]',
+                        'focus:outline-none focus:border-[var(--fin-blue)]',
+                        'placeholder:text-[var(--fin-t3)]'
+                      )}/>
+                  </div>
                 ))}
               </div>
-              <div className="flex gap-2 mt-4">
-                <Button variant="brand" onClick={() => runScreener()} loading={loading} leftIcon={<Search size={14}/>}>
-                  Lancer le screener
-                </Button>
-                <Button variant="ghost" onClick={() => { setFilters(EMPTY); setResults([]); setRan(false) }}>
-                  Effacer
-                </Button>
-              </div>
-            </Card>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Results */}
-      <AnimatePresence>
-        {ran && (
-          <motion.div initial={{ opacity:0, y:15 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}>
-            <Card className="overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <p className="font-bold text-gray-900 text-sm">
-                  {loading ? 'Recherche...' : `${sorted.length} résultat${sorted.length>1?'s':''}`}
-                </p>
-                <p className="text-gray-400 text-xs">Cliquez sur une colonne pour trier</p>
-              </div>
-
-              {sorted.length === 0 && !loading ? (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                  <Search size={36} className="mb-3 opacity-30"/>
-                  <p className="font-medium text-gray-500">Aucune action ne correspond à ces critères.</p>
-                  <p className="text-xs mt-1 text-gray-400">Essayez de modifier vos filtres.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100 bg-gray-50">
-                        {COLS.map(col => (
-                          <th key={col.key} onClick={() => sort(col.key)}
-                            className={cn('px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 transition-colors',
-                              col.right ? 'text-right' : 'text-left')}>
-                            <span className="inline-flex items-center gap-1">
-                              {col.right && sortKey===col.key && <ArrowUpDown size={10} className={sortDir==='asc'?'rotate-180':''}/>}
-                              {col.label}
-                              {!col.right && sortKey===col.key && <ArrowUpDown size={10} className={sortDir==='asc'?'rotate-180':''}/>}
-                            </span>
-                          </th>
-                        ))}
-                        <th className="px-4 py-3"/>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <AnimatePresence>
-                        {sorted.map((s, i) => (
-                          <motion.tr key={s.symbol}
-                            initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }}
-                            transition={{ delay: Math.min(i,10)*0.03 }}
-                            className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3">
-                              <Link href={`/stock/${s.symbol}`} className="flex items-center gap-2.5 group">
-                                <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-                                  {s.symbol[0]}
-                                </div>
-                                <div>
-                                  <p className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{s.symbol}</p>
-                                  <p className="text-gray-400 text-xs truncate max-w-[140px]">{s.name}</p>
-                                </div>
-                              </Link>
-                            </td>
-                            <td className="px-4 py-3 text-right font-bold text-gray-900 tabular-nums">${s.price.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-right">
-                              <span className={cn('inline-flex items-center gap-1 font-semibold tabular-nums text-xs px-2 py-0.5 rounded-full',
-                                s.changePercent>=0?'text-green-700 bg-green-100':'text-red-600 bg-red-100')}>
-                                {s.changePercent>=0?<TrendingUp size={10}/>:<TrendingDown size={10}/>}
-                                {s.changePercent>=0?'+':''}{s.changePercent.toFixed(2)}%
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right text-gray-500 text-xs tabular-nums">{(s.volume/1e6).toFixed(1)}M</td>
-                            <td className="px-4 py-3 text-right text-gray-500 text-xs tabular-nums">{fmt(s.marketCap)}</td>
-                            <td className="px-4 py-3 text-right text-gray-500 text-xs tabular-nums">{s.pe?.toFixed(1)??'—'}</td>
-                            <td className="px-4 py-3 text-right text-gray-500 text-xs tabular-nums">{s.week52High?`$${s.week52High.toFixed(2)}`:'—'}</td>
-                            <td className="px-4 py-3 text-right text-gray-500 text-xs tabular-nums">{s.week52Low?`$${s.week52Low.toFixed(2)}`:'—'}</td>
-                            <td className="px-4 py-3 text-right">
-                              <button onClick={() => toggleWatchlist(s)}
-                                className={cn('p-1.5 rounded-lg transition-all',
-                                  watchlist.has(s.symbol)
-                                    ? 'text-amber-500 bg-amber-50 hover:bg-amber-100'
-                                    : 'text-gray-400 hover:text-amber-500 hover:bg-amber-50')}>
-                                <Plus size={13} className={watchlist.has(s.symbol)?'rotate-45':''}/>
-                              </button>
-                            </td>
-                          </motion.tr>
-                        ))}
-                      </AnimatePresence>
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {!ran && (
-        <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }}
-          className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mb-4">
-            <Search size={28} className="text-purple-400"/>
+      <div className="flex-1 overflow-auto">
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-[var(--fin-t3)]">
+            <RefreshCw size={14} strokeWidth={1.5} className="animate-spin mr-2"/>
+            <span className="text-xs font-mono">ANALYSE EN COURS...</span>
           </div>
-          <p className="text-lg font-semibold text-gray-700 mb-1">Prêt à screener</p>
-          <p className="text-sm text-gray-400">Choisissez un preset ou configurez vos filtres puis lancez la recherche.</p>
-        </motion.div>
+        ) : !ran ? (
+          <div className="flex flex-col items-center py-24 text-center">
+            <Search size={28} strokeWidth={1} className="text-[var(--fin-t3)] mb-3"/>
+            <p className="text-sm font-medium text-[var(--fin-t2)]">Configurez vos critères et lancez l'analyse</p>
+            <p className="text-[10px] text-[var(--fin-t3)] mt-1">Ou utilisez un preset ci-dessus pour démarrer rapidement</p>
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className="flex flex-col items-center py-24 text-center">
+            <Search size={24} strokeWidth={1} className="text-[var(--fin-t3)] mb-3"/>
+            <p className="text-sm font-medium text-[var(--fin-t2)]">Aucun résultat</p>
+            <p className="text-[10px] text-[var(--fin-t3)] mt-1">Élargissez vos critères de filtrage</p>
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead className={cn('sticky top-0 z-10 border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
+              <tr>
+                {COLS.map(col => (
+                  <th key={col.key} onClick={() => handleSort(col.key)}
+                    className={cn(
+                      'px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.08em] cursor-pointer select-none whitespace-nowrap',
+                      'text-[var(--fin-t3)] hover:text-[var(--fin-t2)] transition-colors',
+                      sortKey===col.key && 'text-[var(--fin-blue)]',
+                      col.right ? 'text-right' : 'text-left'
+                    )}>
+                    {col.label}{sortKey===col.key ? (sortDir==='asc'?' ↑':' ↓') : ''}
+                  </th>
+                ))}
+                <th className="px-3 py-1.5 w-16"/>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((s, i) => {
+                const up = s.changePercent >= 0
+                const inWl = watchlist.has(s.symbol)
+                return (
+                  <motion.tr key={s.symbol}
+                    initial={{opacity:0}} animate={{opacity:1}} transition={{delay:Math.min(i,15)*0.02}}
+                    className={cn('border-b border-[var(--fin-border)] last:border-0 transition-colors group','hover:bg-[var(--fin-hover)]')}>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <Link href={`/stock/${s.symbol}`} className="font-mono font-bold text-xs text-[var(--fin-t1)] hover:text-[var(--fin-blue)] transition-colors">
+                          {s.symbol}
+                        </Link>
+                        <span className="text-[9px] text-[var(--fin-t3)] truncate max-w-[120px]">{s.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-xs text-[var(--fin-t1)] font-bold tabular-nums">
+                      ${s.price.toFixed(2)}
+                    </td>
+                    <td className={cn('px-3 py-2 text-right font-mono text-xs font-bold tabular-nums', up?'text-[var(--fin-green)]':'text-[var(--fin-red)]')}>
+                      <span className="flex items-center justify-end gap-0.5">
+                        {up ? '▲' : '▼'}{Math.abs(s.changePercent).toFixed(2)}%
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-xs text-[var(--fin-t2)] tabular-nums">
+                      {s.volume >= 1e6 ? `${(s.volume/1e6).toFixed(1)}M` : s.volume >= 1e3 ? `${(s.volume/1e3).toFixed(0)}K` : s.volume}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-xs text-[var(--fin-t2)] tabular-nums">{fmt(s.marketCap)}</td>
+                    <td className="px-3 py-2 text-right font-mono text-xs text-[var(--fin-t2)] tabular-nums">
+                      {s.pe != null ? s.pe.toFixed(1) : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[10px] text-[var(--fin-green)] tabular-nums">
+                      {s.week52High != null ? `$${s.week52High.toFixed(2)}` : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[10px] text-[var(--fin-red)] tabular-nums">
+                      {s.week52Low != null ? `$${s.week52Low.toFixed(2)}` : '—'}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => toggleWatchlist(s)}
+                          className={cn('w-6 h-6 rounded flex items-center justify-center transition-colors',
+                            inWl ? 'text-[var(--fin-amber)] hover:bg-[var(--fin-amber-bg)]' : 'text-[var(--fin-t3)] hover:text-[var(--fin-amber)] hover:bg-[var(--fin-amber-bg)]')}>
+                          {inWl ? <StarOff size={11} strokeWidth={1.5}/> : <Star size={11} strokeWidth={1.5}/>}
+                        </button>
+                        <Link href={`/stock/${s.symbol}`}
+                          className="w-6 h-6 rounded flex items-center justify-center text-[var(--fin-t3)] hover:text-[var(--fin-blue)] hover:bg-[var(--fin-blue-bg)] transition-colors">
+                          <Search size={11} strokeWidth={1.5}/>
+                        </Link>
+                      </div>
+                    </td>
+                  </motion.tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {ran && sorted.length > 0 && (
+        <div className={cn('flex items-center gap-3 px-4 py-1.5 border-t border-[var(--fin-border)]','bg-[var(--fin-panel)]')}>
+          <span className="text-[9px] font-mono text-[var(--fin-t3)]">
+            <span className="text-[var(--fin-t1)] font-bold">{sorted.length}</span> action{sorted.length>1?'s':''} · trié par <span className="text-[var(--fin-blue)] font-bold">{sortKey.toUpperCase()}</span> {sortDir==='desc'?'↓':'↑'}
+          </span>
+          {activeCount > 0 && <span className="text-[9px] font-mono text-[var(--fin-amber)]">{activeCount} filtre{activeCount>1?'s':''} actif{activeCount>1?'s':''}</span>}
+        </div>
       )}
     </div>
   )

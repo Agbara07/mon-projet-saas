@@ -8,59 +8,55 @@ import {
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, Plus, Trash2, Wallet,
-  BarChart3, PieChartIcon, ArrowUpRight, RefreshCw,
+  BarChart3, PieChartIcon, ArrowUpRight, RefreshCw, Radio,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { cn, formatPct } from '@/lib/utils'
-import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { PageLoader, SkeletonCard } from '@/components/ui/Spinner'
-import Link from 'next/link'
+import { Button } from '@/components/ui/Button'
 import { toast } from 'sonner'
 
 interface Holding {
-  id: string; symbol: string; companyName: string
-  quantity: number; avgBuyPrice: number
-  currentPrice: number; value: number; pnl: number; pnlPct: number
+  id:string; symbol:string; companyName:string
+  quantity:number; avgBuyPrice:number
+  currentPrice:number; value:number; pnl:number; pnlPct:number
 }
 interface Portfolio {
-  id: string; name: string; holdings: Holding[]
-  totalValue: number; totalCost: number; totalPnl: number; totalPnlPct: number
+  id:string; name:string; holdings:Holding[]
+  totalValue:number; totalCost:number; totalPnl:number; totalPnlPct:number
 }
-interface HistPoint { date: string; close: number }
+interface HistPoint { date:string; close:number }
 
 const PERIODS = ['1d','5d','1mo','3mo','6mo','1y','5y'] as const
 type Period = typeof PERIODS[number]
-const PIE_COLORS = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16']
+const PIE_COLORS = ['#3B8EF3','#0ECB81','#F0B90B','#F6465D','#9B59B6','#00B8D9','#F97316','#84CC16']
 
-const TooltipContent = ({ active, payload, label }: any) => {
+const PfTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-lg">
-      <p className="text-gray-500 text-xs">{label}</p>
-      <p className="text-gray-900 font-bold">${payload[0].value.toFixed(2)}</p>
+    <div className="bg-[var(--fin-surface)] border border-[var(--fin-border)] rounded px-2 py-1.5 text-[10px] font-mono shadow-xl">
+      <p className="text-[var(--fin-t3)]">{label}</p>
+      <p className="text-[var(--fin-t1)] font-bold">${payload[0].value.toFixed(2)}</p>
     </div>
   )
 }
 
 export default function PortfolioPage() {
   const [portfolios, setPortfolios]   = useState<Portfolio[]>([])
-  const [selected, setSelected]       = useState<Portfolio | null>(null)
-  const [history, setHistory]         = useState<HistPoint[]>([])
-  const [period, setPeriod]           = useState<Period>('1mo')
-  const [liveQuotes, setLiveQuotes]   = useState<Record<string, number>>({})
-  const [showNew, setShowNew]         = useState(false)
-  const [showHolding, setShowHolding] = useState(false)
-  const [newName, setNewName]         = useState('')
+  const [selected, setSelected]       = useState<Portfolio|null>(null)
+  const [history,  setHistory]        = useState<HistPoint[]>([])
+  const [period,   setPeriod]         = useState<Period>('1mo')
+  const [liveQuotes, setLiveQuotes]   = useState<Record<string,number>>({})
+  const [showNew,    setShowNew]      = useState(false)
+  const [showHolding,setShowHolding]  = useState(false)
+  const [newName,  setNewName]        = useState('')
   const [newH, setNewH]               = useState({ symbol:'', quantity:'', avgBuyPrice:'', companyName:'' })
-  const [loading, setLoading]         = useState(true)
-  const [histLoading, setHistLoading] = useState(false)
-  const [error, setError]             = useState<string | null>(null)
-  const selectedIdRef                 = useRef<string | null>(null)
+  const [loading,  setLoading]        = useState(true)
+  const [histLoading,setHistLoading]  = useState(false)
+  const [error,    setError]          = useState<string|null>(null)
+  const selectedIdRef                 = useRef<string|null>(null)
 
   const { connected, subscribe } = useWebSocket(msg => {
     if (msg.type === 'quotes') {
@@ -70,412 +66,343 @@ export default function PortfolioPage() {
     }
   })
 
-  // Charge l'historique séparément sans bloquer le portfolio
   const loadHistory = useCallback(async (symbol: string, p: Period) => {
-    if (!symbol) return
-    setHistLoading(true)
-    try {
-      const r = await api.get(`/market/${symbol}/historical?period=${p}`)
-      setHistory(r.data ?? [])
-    } catch {
-      setHistory([]) // Pas bloquant
-    } finally {
-      setHistLoading(false)
-    }
+    if (!symbol) return; setHistLoading(true)
+    try { const r = await api.get(`/market/${symbol}/historical?period=${p}`); setHistory(r.data ?? []) }
+    catch { setHistory([]) } finally { setHistLoading(false) }
   }, [])
 
   const loadPortfolio = useCallback(async (id: string) => {
     selectedIdRef.current = id
     try {
       const r = await api.get(`/portfolios/${id}`)
-      const portfolio: Portfolio = r.data
-      setSelected(portfolio)
-      if (portfolio.holdings.length > 0) {
-        subscribe(portfolio.holdings.map((h: Holding) => h.symbol))
-        loadHistory(portfolio.holdings[0].symbol, period)
-      } else {
-        setHistory([])
-      }
+      const p: Portfolio = r.data; setSelected(p)
+      if (p.holdings.length > 0) { subscribe(p.holdings.map(h => h.symbol)); loadHistory(p.holdings[0].symbol, period) }
+      else setHistory([])
     } catch (e: any) {
-      if (e?.response?.status === 401) {
-        window.location.href = '/login'
-      } else {
-        toast.error('Erreur lors du chargement du portefeuille')
-      }
+      if (e?.response?.status === 401) window.location.href = '/login'
+      else toast.error('Erreur chargement portefeuille')
     }
   }, [period, loadHistory, subscribe])
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true); setError(null)
     try {
-      const r = await api.get('/portfolios')
-      const list: Portfolio[] = r.data ?? []
-      setPortfolios(list)
-      if (list.length > 0) {
-        await loadPortfolio(list[0].id)
-      }
+      const r = await api.get('/portfolios'); const list: Portfolio[] = r.data ?? []
+      setPortfolios(list); if (list.length > 0) await loadPortfolio(list[0].id)
     } catch (e: any) {
-      if (e?.response?.status === 401) {
-        window.location.href = '/login'
-        return
-      }
-      setError('Impossible de charger vos portefeuilles. Vérifiez votre connexion.')
-    } finally {
-      setLoading(false)
-    }
+      if (e?.response?.status === 401) { window.location.href = '/login'; return }
+      setError('Impossible de charger vos portefeuilles.')
+    } finally { setLoading(false) }
   }, [loadPortfolio])
 
   useEffect(() => { load() }, [load])
-
-  // Recharge l'historique quand la période change
-  useEffect(() => {
-    const sym = selected?.holdings[0]?.symbol
-    if (sym) loadHistory(sym, period)
-  }, [period, selected?.id, loadHistory])
+  useEffect(() => { const sym = selected?.holdings[0]?.symbol; if (sym) loadHistory(sym, period) }, [period, selected?.id, loadHistory])
 
   const createPortfolio = async () => {
     if (!newName.trim()) return
-    try {
-      await api.post('/portfolios', { name: newName })
-      toast.success('Portefeuille créé !')
-      setNewName(''); setShowNew(false)
-      await load()
-    } catch { toast.error('Erreur lors de la création') }
+    await api.post('/portfolios', { name: newName })
+    toast.success('Portefeuille créé'); setNewName(''); setShowNew(false); await load()
   }
 
   const addHolding = async () => {
     if (!selected || !newH.symbol || !newH.quantity || !newH.avgBuyPrice) return
-    try {
-      await api.post(`/portfolios/${selected.id}/holdings`, {
-        symbol: newH.symbol.toUpperCase(),
-        quantity: Number(newH.quantity),
-        avgBuyPrice: Number(newH.avgBuyPrice),
-        companyName: newH.companyName,
-      })
-      toast.success(`${newH.symbol.toUpperCase()} ajouté`)
-      setNewH({ symbol:'', quantity:'', avgBuyPrice:'', companyName:'' })
-      setShowHolding(false)
-      await loadPortfolio(selected.id)
-    } catch { toast.error('Erreur lors de l\'ajout') }
+    await api.post(`/portfolios/${selected.id}/holdings`, {
+      symbol: newH.symbol.toUpperCase(), quantity: Number(newH.quantity),
+      avgBuyPrice: Number(newH.avgBuyPrice), companyName: newH.companyName,
+    })
+    toast.success(`${newH.symbol.toUpperCase()} ajouté`)
+    setNewH({ symbol:'', quantity:'', avgBuyPrice:'', companyName:'' }); setShowHolding(false)
+    await loadPortfolio(selected.id)
   }
 
-  const removeHolding = async (portfolioId: string, holdingId: string, symbol: string) => {
-    try {
-      await api.delete(`/portfolios/${portfolioId}/holdings/${holdingId}`)
-      toast.success(`${symbol} supprimé`)
-      await loadPortfolio(portfolioId)
-    } catch { toast.error('Erreur lors de la suppression') }
+  const removeHolding = async (pid: string, hid: string, sym: string) => {
+    await api.delete(`/portfolios/${pid}/holdings/${hid}`)
+    toast.success(`${sym} supprimé`); await loadPortfolio(pid)
   }
 
-  if (loading) return <PageLoader />
-
+  if (loading) return (
+    <div className="flex items-center justify-center py-32 text-[var(--fin-t3)]">
+      <RefreshCw size={16} strokeWidth={1.5} className="animate-spin"/>
+    </div>
+  )
   if (error) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-6">
-      <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center">
-        <Wallet size={28} className="text-red-400"/>
-      </div>
-      <p className="text-gray-900 font-bold text-lg">{error}</p>
-      <Button variant="brand" onClick={load} leftIcon={<RefreshCw size={14}/>}>Réessayer</Button>
+    <div className="flex flex-col items-center justify-center py-24 gap-3">
+      <p className="text-[var(--fin-t2)] text-sm">{error}</p>
+      <button onClick={load} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs bg-[var(--fin-blue)] text-white">
+        <RefreshCw size={11}/> Réessayer
+      </button>
     </div>
   )
 
-  const totalLive = selected?.holdings.reduce((s, h) =>
-    s + (liveQuotes[h.symbol] ?? h.currentPrice) * h.quantity, 0) ?? 0
-
-  const pieData = selected?.holdings.map((h, i) => ({
-    name: h.symbol,
-    value: (liveQuotes[h.symbol] ?? h.currentPrice) * h.quantity,
-    color: PIE_COLORS[i % PIE_COLORS.length],
-  })) ?? []
+  const totalLive = selected?.holdings.reduce((s,h) => s + (liveQuotes[h.symbol] ?? h.currentPrice) * h.quantity, 0) ?? 0
+  const pieData   = selected?.holdings.map((h,i) => ({ name:h.symbol, value:(liveQuotes[h.symbol] ?? h.currentPrice) * h.quantity, color:PIE_COLORS[i%PIE_COLORS.length] })) ?? []
+  const chartUp   = history.length >= 2 && history[history.length-1]?.close >= history[0]?.close
 
   return (
-    <div className="p-6 space-y-5 min-h-screen">
+    <div className="flex flex-col h-full">
 
-      {/* Header */}
-      <motion.div initial={{ opacity:0, y:-10 }} animate={{ opacity:1, y:0 }} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-            <Wallet size={22} className="text-blue-500"/> Portefeuille
-          </h1>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant={connected ? 'green' : 'white'}>
-              <span className={cn('w-1.5 h-1.5 rounded-full', connected ? 'bg-green-400 animate-pulse' : 'bg-gray-400')}/>
-              {connected ? 'Temps réel' : 'Hors ligne'}
-            </Badge>
-            <button onClick={load} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-              <RefreshCw size={13}/>
-            </button>
-          </div>
-        </div>
-        <Button variant="brand" leftIcon={<Plus size={15}/>} onClick={() => setShowNew(true)}>
-          Nouveau portefeuille
-        </Button>
-      </motion.div>
+      {/* Status bar */}
+      <div className={cn('flex items-center gap-3 px-4 h-9 flex-shrink-0 border-b border-[var(--fin-border)]','bg-[var(--fin-panel)]')}>
+        <Wallet size={11} strokeWidth={1.5} className="text-[var(--fin-t3)]"/>
+        <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">Portfolio</span>
+        <div className="w-px h-3.5 bg-[var(--fin-border)]"/>
+        <Radio size={10} strokeWidth={1.5} className={connected?'text-[var(--fin-green)]':'text-[var(--fin-t3)]'}/>
+        <span className={cn('text-[10px] font-mono', connected?'text-[var(--fin-green)]':'text-[var(--fin-t3)]')}>
+          {connected?'TEMPS RÉEL':'HORS LIGNE'}
+        </span>
+        <div className="flex-1"/>
+        {selected && (
+          <span className="text-[10px] font-mono text-[var(--fin-t2)]">
+            <span className="text-[var(--fin-t3)]">TOTAL </span>
+            <span className="text-[var(--fin-t1)] font-bold">${totalLive.toLocaleString('fr-FR',{minimumFractionDigits:2})}</span>
+            {' '}
+            <span className={cn('font-bold', selected.totalPnl>=0?'text-[var(--fin-green)]':'text-[var(--fin-red)]')}>
+              {selected.totalPnl>=0?'+':''}{formatPct(selected.totalPnlPct)}
+            </span>
+          </span>
+        )}
+        <div className="w-px h-3.5 bg-[var(--fin-border)]"/>
+        <button onClick={load} className="flex items-center justify-center w-7 h-7 rounded text-[var(--fin-t3)] hover:text-[var(--fin-t1)] hover:bg-[var(--fin-hover)] transition-colors">
+          <RefreshCw size={11} strokeWidth={1.5}/>
+        </button>
+        <button onClick={() => setShowNew(true)}
+          className="flex items-center gap-1.5 h-7 px-2.5 rounded text-[11px] font-medium bg-[var(--fin-blue)] text-white hover:opacity-90 transition-opacity">
+          <Plus size={11}/> Nouveau
+        </button>
+      </div>
 
-      {/* Tabs */}
+      {/* Portfolio tabs */}
       {portfolios.length > 0 && (
-        <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+        <div className={cn('flex items-stretch border-b border-[var(--fin-border)] overflow-x-auto','bg-[var(--fin-panel)]')}>
           {portfolios.map(p => (
             <button key={p.id} onClick={() => loadPortfolio(p.id)}
-              className={cn('px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap',
+              className={cn(
+                'px-4 py-1.5 text-[11px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
                 selected?.id === p.id
-                  ? 'border-blue-500 text-gray-900'
-                  : 'border-transparent text-gray-500 hover:text-gray-700')}>
+                  ? 'border-[var(--fin-blue)] text-[var(--fin-blue)]'
+                  : 'border-transparent text-[var(--fin-t3)] hover:text-[var(--fin-t2)]'
+              )}>
               {p.name}
             </button>
           ))}
-        </motion.div>
+        </div>
       )}
 
-      {selected ? (
-        <AnimatePresence mode="wait">
-          <motion.div key={selected.id} initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
-            exit={{ opacity:0 }} transition={{ duration:.3 }} className="space-y-5">
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="flex-1 overflow-auto p-3 space-y-3">
+        {selected ? (
+          <>
+            {/* KPI row */}
+            <div className="grid grid-cols-4 gap-2">
               {[
-                { label:'Valeur totale',  value:`$${totalLive.toLocaleString('fr-FR',{minimumFractionDigits:2})}`, color:'text-gray-900' },
-                { label:'Investi',        value:`$${selected.totalCost.toLocaleString('fr-FR',{minimumFractionDigits:2})}`, color:'text-gray-600' },
-                { label:'P&L total',      value:`${selected.totalPnl>=0?'+':''}$${Math.abs(selected.totalPnl).toFixed(2)}`, color:selected.totalPnl>=0?'text-green-600':'text-red-500' },
-                { label:'Performance',    value:formatPct(selected.totalPnlPct), color:selected.totalPnlPct>=0?'text-green-600':'text-red-500' },
-              ].map((s, i) => (
-                <motion.div key={s.label} initial={{ opacity:0, y:15 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*.06 }}>
-                  <Card className="p-4">
-                    <p className="text-gray-500 text-xs font-medium mb-1">{s.label}</p>
-                    <p className={cn('text-xl font-black tabular-nums', s.color)}>{s.value}</p>
-                  </Card>
-                </motion.div>
+                { label:'VALEUR LIVE',   value:`$${totalLive.toFixed(2)}`,               color:'text-[var(--fin-t1)]' },
+                { label:'INVESTI',       value:`$${selected.totalCost.toFixed(2)}`,       color:'text-[var(--fin-t2)]' },
+                { label:'P&L NET',       value:`${selected.totalPnl>=0?'+':''}$${Math.abs(selected.totalPnl).toFixed(2)}`, color:selected.totalPnl>=0?'text-[var(--fin-green)]':'text-[var(--fin-red)]' },
+                { label:'PERF.',         value:formatPct(selected.totalPnlPct),           color:selected.totalPnlPct>=0?'text-[var(--fin-green)]':'text-[var(--fin-red)]' },
+              ].map(s => (
+                <div key={s.label} className={cn('rounded-lg border border-[var(--fin-border)] px-3 py-2','bg-[var(--fin-panel)]')}>
+                  <p className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">{s.label}</p>
+                  <p className={cn('text-base font-bold font-mono tabular-nums mt-0.5', s.color)}>{s.value}</p>
+                </div>
               ))}
             </div>
 
             {/* Chart + Pie */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <Card className="lg:col-span-2 p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="font-bold text-gray-900 flex items-center gap-2">
-                    <BarChart3 size={15} className="text-blue-500"/>
+            <div className="grid grid-cols-3 gap-3">
+              <div className={cn('col-span-2 rounded-lg border border-[var(--fin-border)] overflow-hidden','bg-[var(--fin-panel)]')}>
+                <div className={cn('flex items-center gap-3 px-3 py-2 border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
+                  <BarChart3 size={10} strokeWidth={1.5} className="text-[var(--fin-t3)]"/>
+                  <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">
                     {selected.holdings[0]?.symbol ?? 'Historique'}
-                    {histLoading && <RefreshCw size={12} className="text-gray-400 animate-spin"/>}
-                  </p>
-                  <div className="flex gap-1">
+                    {histLoading && <RefreshCw size={9} className="inline ml-1.5 animate-spin"/>}
+                  </span>
+                  <div className="flex-1"/>
+                  <div className="flex gap-0.5">
                     {PERIODS.map(p => (
                       <button key={p} onClick={() => setPeriod(p)}
-                        className={cn('text-xs px-2 py-1 rounded-lg font-medium transition-colors',
-                          period===p ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100')}>
+                        className={cn('text-[9px] px-1.5 py-0.5 rounded font-mono transition-colors',
+                          period===p ? 'bg-[var(--fin-blue)] text-white' : 'text-[var(--fin-t3)] hover:text-[var(--fin-t2)] hover:bg-[var(--fin-hover)]')}>
                         {p}
                       </button>
                     ))}
                   </div>
                 </div>
-                {history.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <AreaChart data={history} margin={{ top:4, right:4, left:0, bottom:0 }}>
-                      <defs>
-                        <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor="#22c55e" stopOpacity={0.15}/>
-                          <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
-                      <XAxis dataKey="date" tick={{fontSize:10,fill:'#94a3b8'}} tickLine={false} axisLine={false}
-                        tickFormatter={v=>v.slice(5)} interval="preserveStartEnd"/>
-                      <YAxis tick={{fontSize:10,fill:'#94a3b8'}} tickLine={false} axisLine={false}
-                        domain={['auto','auto']} tickFormatter={v=>`$${v}`} width={52}/>
-                      <Tooltip content={<TooltipContent/>}/>
-                      <Area type="monotone" dataKey="close" stroke="#22c55e" strokeWidth={2}
-                        fill="url(#pg)" dot={false} activeDot={{r:4,fill:'#22c55e',strokeWidth:0}}/>
-                    </AreaChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
-                    {histLoading ? 'Chargement du graphique...' : selected.holdings.length === 0 ? 'Ajoutez des positions pour voir le graphique' : 'Données historiques non disponibles'}
-                  </div>
-                )}
-              </Card>
-
-              <Card className="p-5">
-                <p className="font-bold text-gray-900 flex items-center gap-2 mb-4">
-                  <PieChartIcon size={15} className="text-purple-500"/> Répartition
-                </p>
-                {pieData.length > 0 ? (
-                  <>
-                    <ResponsiveContainer width="100%" height={160}>
-                      <PieChart>
-                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={70}
-                          dataKey="value" paddingAngle={2}>
-                          {pieData.map((e, i) => <Cell key={i} fill={e.color} strokeWidth={0}/>)}
-                        </Pie>
-                        <Tooltip formatter={(v:number) => [`$${v.toFixed(2)}`,'']}
-                          contentStyle={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:'12px'}}/>
-                      </PieChart>
+                <div className="p-3">
+                  {history.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <AreaChart data={history} margin={{top:4,right:4,left:0,bottom:0}}>
+                        <defs>
+                          <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%"  stopColor={chartUp?'var(--fin-green)':'var(--fin-red)'} stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor={chartUp?'var(--fin-green)':'var(--fin-red)'} stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="2 4" stroke="var(--fin-border)" vertical={false}/>
+                        <XAxis dataKey="date" tick={{fontSize:9,fill:'var(--fin-t3)',fontFamily:'monospace'}} tickLine={false} axisLine={false} tickFormatter={v=>v.slice(5)} interval="preserveStartEnd"/>
+                        <YAxis tick={{fontSize:9,fill:'var(--fin-t3)',fontFamily:'monospace'}} tickLine={false} axisLine={false} domain={['auto','auto']} tickFormatter={v=>`$${v}`} width={48}/>
+                        <Tooltip content={<PfTooltip/>}/>
+                        <Area type="monotone" dataKey="close" stroke={chartUp?'var(--fin-green)':'var(--fin-red)'} strokeWidth={1.5} fill="url(#pg)" dot={false} activeDot={{r:3,strokeWidth:0}}/>
+                      </AreaChart>
                     </ResponsiveContainer>
-                    <div className="space-y-1.5 mt-2">
-                      {pieData.slice(0,5).map((e,i) => {
-                        const pct = totalLive > 0 ? ((e.value/totalLive)*100).toFixed(1) : '0'
-                        return (
-                          <div key={e.name} className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{background:e.color}}/>
-                            <p className="text-gray-500 text-xs flex-1">{e.name}</p>
-                            <p className="text-gray-900 text-xs font-semibold tabular-nums">{pct}%</p>
-                          </div>
-                        )
-                      })}
+                  ) : (
+                    <div className="flex items-center justify-center h-48 text-[10px] text-[var(--fin-t3)] font-mono">
+                      {histLoading ? 'CHARGEMENT...' : '— DONNÉES INDISPONIBLES'}
                     </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-                    <PieChartIcon size={32} className="mb-2 opacity-20"/>
-                    <p className="text-sm">Aucune position</p>
-                  </div>
-                )}
-              </Card>
+                  )}
+                </div>
+              </div>
+
+              {/* Répartition */}
+              <div className={cn('rounded-lg border border-[var(--fin-border)] overflow-hidden','bg-[var(--fin-panel)]')}>
+                <div className={cn('flex items-center gap-2 px-3 py-2 border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
+                  <PieChartIcon size={10} strokeWidth={1.5} className="text-[var(--fin-t3)]"/>
+                  <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">Répartition</span>
+                </div>
+                <div className="p-3">
+                  {pieData.length > 0 ? (
+                    <>
+                      <ResponsiveContainer width="100%" height={140}>
+                        <PieChart>
+                          <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={58} dataKey="value" paddingAngle={2}>
+                            {pieData.map((e,i) => <Cell key={i} fill={e.color} strokeWidth={0}/>)}
+                          </Pie>
+                          <Tooltip formatter={(v:number) => [`$${v.toFixed(2)}`,'Value']}
+                            contentStyle={{background:'var(--fin-panel)',border:'1px solid var(--fin-border)',borderRadius:'4px',fontSize:'10px',fontFamily:'monospace'}}/>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="space-y-1 mt-1">
+                        {pieData.slice(0,6).map((e,i) => {
+                          const pct = totalLive > 0 ? ((e.value/totalLive)*100).toFixed(1) : '0'
+                          return (
+                            <div key={e.name} className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:e.color}}/>
+                              <span className="text-[10px] text-[var(--fin-t2)] font-mono flex-1">{e.name}</span>
+                              <span className="text-[10px] text-[var(--fin-t1)] font-mono font-bold tabular-nums">{pct}%</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-40 text-[var(--fin-t3)]">
+                      <PieChartIcon size={24} strokeWidth={1} className="mb-2"/>
+                      <p className="text-[10px] font-mono">AUCUNE POSITION</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Holdings table */}
-            <Card className="overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <p className="font-bold text-gray-900">
-                  Positions ouvertes
-                  <span className="ml-2 text-sm font-normal text-gray-400">({selected.holdings.length})</span>
-                </p>
-                <Button variant="outline" size="sm" leftIcon={<Plus size={13}/>} onClick={() => setShowHolding(true)}>
-                  Ajouter
-                </Button>
+            <div className={cn('rounded-lg border border-[var(--fin-border)] overflow-hidden','bg-[var(--fin-panel)]')}>
+              <div className={cn('flex items-center gap-3 px-3 py-2 border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
+                <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">Positions ouvertes</span>
+                <span className="text-[9px] font-mono text-[var(--fin-t3)]">({selected.holdings.length})</span>
+                <div className="flex-1"/>
+                <button onClick={() => setShowHolding(true)}
+                  className="flex items-center gap-1.5 h-6 px-2 rounded text-[10px] bg-[var(--fin-blue)] text-white hover:opacity-90 transition-opacity">
+                  <Plus size={9}/> Ajouter
+                </button>
               </div>
               {selected.holdings.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-3">
-                    <BarChart3 size={24} className="text-blue-400"/>
-                  </div>
-                  <p className="font-semibold text-gray-700 mb-1">Aucune position</p>
-                  <p className="text-gray-400 text-sm mb-4">Ajoutez votre première action pour commencer à tracker.</p>
-                  <Button variant="brand" size="sm" leftIcon={<Plus size={13}/>} onClick={() => setShowHolding(true)}>
-                    Ajouter une position
-                  </Button>
+                <div className="flex flex-col items-center py-12 text-center">
+                  <BarChart3 size={20} strokeWidth={1} className="text-[var(--fin-t3)] mb-2"/>
+                  <p className="text-xs text-[var(--fin-t2)]">Aucune position</p>
+                  <p className="text-[10px] text-[var(--fin-t3)] mt-1">Ajoutez votre première position pour commencer.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full">
                     <thead>
-                      <tr className="border-b border-gray-100 bg-gray-50">
-                        {['Titre','Quantité','Prix moy.','Prix actuel','Valeur','P&L','P&L %',''].map(h => (
-                          <th key={h} className="px-4 py-3 text-right first:text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                      <tr className={cn('border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
+                        {[['Titre','left'],['Qté','right'],['PRU','right'],['Prix live','right'],['Valeur','right'],['P&L $','right'],['P&L %','right'],['','right']].map(([h,a]) => (
+                          <th key={h} className={cn('px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[var(--fin-t3)]', a==='right'?'text-right':'text-left')}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {selected.holdings.map((h, i) => {
-                        const live   = liveQuotes[h.symbol] ?? h.currentPrice
-                        const value  = live * h.quantity
-                        const cost   = h.avgBuyPrice * h.quantity
-                        const pnl    = value - cost
-                        const pnlPct = cost > 0 ? (pnl/cost)*100 : 0
-                        const isUp   = pnl >= 0
+                      {selected.holdings.map((h,i) => {
+                        const live  = liveQuotes[h.symbol] ?? h.currentPrice
+                        const value = live * h.quantity
+                        const pnl   = value - h.avgBuyPrice * h.quantity
+                        const pnlPct= h.avgBuyPrice * h.quantity > 0 ? (pnl/(h.avgBuyPrice*h.quantity))*100 : 0
+                        const up    = pnl >= 0
                         return (
-                          <motion.tr key={h.id} initial={{ opacity:0, x:-10 }} animate={{ opacity:1, x:0 }}
-                            transition={{ delay:i*.04 }}
-                            className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">
-                                  {h.symbol[0]}
-                                </div>
-                                <div>
-                                  <Link href={`/stock/${h.symbol}`} className="font-bold text-gray-900 hover:text-blue-600 transition-colors flex items-center gap-1">
-                                    {h.symbol}<ArrowUpRight size={11}/>
-                                  </Link>
-                                  <p className="text-gray-400 text-xs truncate max-w-[120px]">{h.companyName}</p>
-                                </div>
+                          <tr key={h.id} className={cn('border-b border-[var(--fin-border)] last:border-0 transition-colors group','hover:bg-[var(--fin-hover)]')}>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-xs text-[var(--fin-t1)]">{h.symbol}</span>
+                                {connected && <span className="w-1.5 h-1.5 rounded-full bg-[var(--fin-green)] animate-pulse"/>}
+                                <span className="text-[9px] text-[var(--fin-t3)] truncate max-w-[80px]">{h.companyName}</span>
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-right text-gray-600 tabular-nums">{h.quantity}</td>
-                            <td className="px-4 py-3 text-right text-gray-500 tabular-nums">${h.avgBuyPrice.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-gray-900 tabular-nums">
-                              ${live.toFixed(2)}
-                              {connected && <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"/>}
+                            <td className="px-3 py-2 text-right font-mono text-xs text-[var(--fin-t2)] tabular-nums">{h.quantity}</td>
+                            <td className="px-3 py-2 text-right font-mono text-xs text-[var(--fin-t3)] tabular-nums">${h.avgBuyPrice.toFixed(2)}</td>
+                            <td className="px-3 py-2 text-right font-mono text-xs text-[var(--fin-t1)] font-bold tabular-nums">${live.toFixed(2)}</td>
+                            <td className="px-3 py-2 text-right font-mono text-xs text-[var(--fin-t2)] tabular-nums">${value.toFixed(2)}</td>
+                            <td className={cn('px-3 py-2 text-right font-mono text-xs font-bold tabular-nums',up?'text-[var(--fin-green)]':'text-[var(--fin-red)]')}>
+                              {up?'+':''}{pnl.toFixed(2)}
                             </td>
-                            <td className="px-4 py-3 text-right text-gray-600 tabular-nums">${value.toFixed(2)}</td>
-                            <td className={cn('px-4 py-3 text-right font-semibold tabular-nums', isUp?'text-green-600':'text-red-500')}>
-                              <span className="flex items-center justify-end gap-1">
-                                {isUp?<TrendingUp size={12}/>:<TrendingDown size={12}/>}
-                                {isUp?'+':''}{pnl.toFixed(2)}$
-                              </span>
-                            </td>
-                            <td className={cn('px-4 py-3 text-right font-bold tabular-nums', isUp?'text-green-600':'text-red-500')}>
+                            <td className={cn('px-3 py-2 text-right font-mono text-xs font-bold tabular-nums',up?'text-[var(--fin-green)]':'text-[var(--fin-red)]')}>
                               {formatPct(pnlPct)}
                             </td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-3 py-2 text-right">
                               <button onClick={() => removeHolding(selected.id, h.id, h.symbol)}
-                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                                <Trash2 size={13}/>
+                                className="w-6 h-6 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 text-[var(--fin-t3)] hover:text-[var(--fin-red)] hover:bg-[var(--fin-red-bg)] transition-all">
+                                <Trash2 size={11} strokeWidth={1.5}/>
                               </button>
                             </td>
-                          </motion.tr>
+                          </tr>
                         )
                       })}
                     </tbody>
                   </table>
-                  <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-                    <p className="text-gray-500 text-xs">{selected.holdings.length} position{selected.holdings.length>1?'s':''}</p>
-                    <p className="text-xs text-gray-500">
-                      Total: <span className="text-gray-900 font-bold">${totalLive.toFixed(2)}</span>
-                      &nbsp;·&nbsp;
-                      <span className={selected.totalPnl>=0?'text-green-600':'text-red-500'}>
-                        {selected.totalPnl>=0?'+':''}${selected.totalPnl.toFixed(2)} ({formatPct(selected.totalPnlPct)})
+                  <div className={cn('flex items-center justify-between px-3 py-1.5 border-t border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
+                    <span className="text-[9px] font-mono text-[var(--fin-t3)]">{selected.holdings.length} position{selected.holdings.length>1?'s':''}</span>
+                    <span className="text-[10px] font-mono text-[var(--fin-t3)]">
+                      Total <span className="text-[var(--fin-t1)] font-bold">${totalLive.toFixed(2)}</span>
+                      {' · '}
+                      <span className={selected.totalPnl>=0?'text-[var(--fin-green)]':'text-[var(--fin-red)]'}>
+                        {selected.totalPnl>=0?'+':''}{formatPct(selected.totalPnlPct)}
                       </span>
-                    </p>
+                    </span>
                   </div>
                 </div>
               )}
-            </Card>
-          </motion.div>
-        </AnimatePresence>
-      ) : (
-        <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }}
-          className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
-            <Wallet size={32} className="text-blue-400"/>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center py-24 text-center">
+            <Wallet size={24} strokeWidth={1} className="text-[var(--fin-t3)] mb-3"/>
+            <p className="text-sm font-medium text-[var(--fin-t2)] mb-1">Aucun portefeuille</p>
+            <p className="text-[10px] text-[var(--fin-t3)] mb-4">Créez votre premier portefeuille pour suivre vos investissements.</p>
+            <button onClick={() => setShowNew(true)}
+              className="flex items-center gap-1.5 h-8 px-4 rounded text-xs bg-[var(--fin-blue)] text-white hover:opacity-90">
+              <Plus size={12}/> Créer un portefeuille
+            </button>
           </div>
-          <p className="text-xl font-bold text-gray-900 mb-2">Aucun portefeuille</p>
-          <p className="text-gray-500 mb-6 max-w-xs">Créez votre premier portefeuille pour commencer à suivre vos investissements.</p>
-          <Button variant="brand" leftIcon={<Plus size={15}/>} onClick={() => setShowNew(true)}>
-            Créer un portefeuille
-          </Button>
-        </motion.div>
-      )}
+        )}
+      </div>
 
       {/* Modals */}
       <Modal open={showNew} onClose={() => setShowNew(false)} title="Nouveau portefeuille" description="Donnez un nom à votre portefeuille">
         <div className="space-y-4">
           <Input label="Nom" value={newName} onChange={e => setNewName(e.target.value)}
-            placeholder="ex: Portefeuille principal" leftIcon={<Wallet size={14}/>}
-            onKeyDown={e => e.key==='Enter' && createPortfolio()}/>
-          <div className="flex gap-2 justify-end pt-2">
-            <Button variant="ghost" onClick={() => setShowNew(false)}>Annuler</Button>
-            <Button variant="brand" onClick={createPortfolio} disabled={!newName.trim()}>Créer</Button>
-          </div>
+            placeholder="ex: Portefeuille principal" onKeyDown={e => e.key==='Enter'&&createPortfolio()}/>
+          <div className="flex gap-2 justify-end"><Button variant="ghost" onClick={() => setShowNew(false)}>Annuler</Button>
+            <Button variant="brand" onClick={createPortfolio} disabled={!newName.trim()}>Créer</Button></div>
         </div>
       </Modal>
-
       <Modal open={showHolding} onClose={() => setShowHolding(false)} title="Ajouter une position" size="lg">
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Symbole" value={newH.symbol}
-            onChange={e => setNewH(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="AAPL"/>
-          <Input label="Société" value={newH.companyName}
-            onChange={e => setNewH(p=>({...p,companyName:e.target.value}))} placeholder="Apple Inc."/>
-          <Input label="Quantité" type="number" value={newH.quantity}
-            onChange={e => setNewH(p=>({...p,quantity:e.target.value}))} placeholder="10"/>
-          <Input label="Prix d'achat moyen ($)" type="number" value={newH.avgBuyPrice}
-            onChange={e => setNewH(p=>({...p,avgBuyPrice:e.target.value}))} placeholder="150.00"/>
+          <Input label="Symbole" value={newH.symbol} onChange={e=>setNewH(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="AAPL"/>
+          <Input label="Société" value={newH.companyName} onChange={e=>setNewH(p=>({...p,companyName:e.target.value}))} placeholder="Apple Inc."/>
+          <Input label="Quantité" type="number" value={newH.quantity} onChange={e=>setNewH(p=>({...p,quantity:e.target.value}))} placeholder="10"/>
+          <Input label="Prix d'achat moyen ($)" type="number" value={newH.avgBuyPrice} onChange={e=>setNewH(p=>({...p,avgBuyPrice:e.target.value}))} placeholder="150.00"/>
         </div>
-        <div className="flex gap-2 justify-end pt-4">
+        <div className="flex gap-2 justify-end mt-4">
           <Button variant="ghost" onClick={() => setShowHolding(false)}>Annuler</Button>
-          <Button variant="brand" onClick={addHolding} leftIcon={<Plus size={14}/>}
-            disabled={!newH.symbol || !newH.quantity || !newH.avgBuyPrice}>
-            Ajouter
-          </Button>
+          <Button variant="brand" onClick={addHolding} disabled={!newH.symbol||!newH.quantity||!newH.avgBuyPrice}>Ajouter</Button>
         </div>
       </Modal>
     </div>

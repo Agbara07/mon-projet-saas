@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws'
 import { Server } from 'http'
 import jwt from 'jsonwebtoken'
-import { getQuotes } from './market.service'
+import { marketRouter } from './market/market-router'
 
 interface Client {
   ws: WebSocket
@@ -56,7 +56,7 @@ export function initWebSocket(server: Server) {
     if (allSymbols.size === 0) return
 
     try {
-      const quotes = await getQuotes([...allSymbols])
+      const quotes = await marketRouter.getQuotes([...allSymbols])
       const quoteMap = Object.fromEntries(quotes.map((q) => [q.symbol, q]))
 
       clients.forEach((client) => {

@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import prisma from '../config/prisma'
-import { getQuotes } from '../services/market.service'
+import { marketRouter } from '../services/market/market-router'
 import { AuthRequest } from '../middlewares/auth.middleware'
 
 export const listPortfolios = async (req: AuthRequest, res: Response) => {
@@ -33,7 +33,7 @@ export const getPortfolioWithPrices = async (req: AuthRequest, res: Response) =>
   if (portfolio.holdings.length === 0) return res.json({ ...portfolio, totalValue: 0, totalPnl: 0, totalPnlPct: 0 })
 
   const symbols = portfolio.holdings.map((h) => h.symbol)
-  const quotes = await getQuotes(symbols)
+  const quotes = await marketRouter.getQuotes(symbols)
   const qmap = Object.fromEntries(quotes.map((q) => [q.symbol, q]))
 
   let totalCost = 0

@@ -1,6 +1,6 @@
 import cron from 'node-cron'
 import prisma from '../config/prisma'
-import { getQuotes } from './market.service'
+import { marketRouter } from './market/market-router'
 import { broadcastAlert } from './websocket.service'
 
 export function startAlertEngine() {
@@ -12,7 +12,7 @@ export function startAlertEngine() {
     if (alerts.length === 0) return
 
     const symbols = [...new Set(alerts.map((a) => a.symbol))]
-    const quotes = await getQuotes(symbols)
+    const quotes = await marketRouter.getQuotes(symbols)
     const priceMap = Object.fromEntries(quotes.map((q) => [q.symbol, q]))
 
     for (const alert of alerts) {

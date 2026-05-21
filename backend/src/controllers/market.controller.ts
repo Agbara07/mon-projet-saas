@@ -8,6 +8,9 @@ import {
   computeCommodityCorrelation, COMMODITY_MAP,
   simulateTransactionCost,
 } from '../services/market/providers/brvm-tools.provider'
+import {
+  getCacheStatus, refreshBRVMData,
+} from '../services/brvm-cron.service'
 
 const handle = (fn: (req: Request, res: Response) => Promise<any>) =>
   async (req: Request, res: Response) => {
@@ -111,6 +114,28 @@ export const etfSectors = handle(async (req, res) => {
 export const etfPerformance = handle(async (req, res) => {
   res.json(await (etfGlobalProvider as any).getETFPerformance(req.params.symbol.toUpperCase()))
 })
+
+// ── Cron & cache BRVM ───────────────────────────────────────
+
+// GET /market/brvm/cache-status — état du cache DB (JWT requis)
+export const brvmCacheStatus = handle(async (_req, res) => {
+  res.json(await getCacheStatus())
+})
+
+// POST /market/brvm/refresh — déclenché par GitHub Actions (CRON_SECRET)
+export const brvmRefresh = async (req: Request, res: Response) => {
+  const secret = req.headers['x-cron-secret']
+  const expected = process.env.CRON_SECRET
+  if (!expected || secret !== expected) {
+    return res.status(401).json({ message: 'CRON_SECRET invalide ou manquant' })
+  }
+  try {
+    const result = await refreshBRVMData()
+    res.json(result)
+  } catch (e: any) {
+    res.status(500).json({ message: e.message })
+  }
+}
 
 // ── Outils d'analyse BRVM ───────────────────────────────────
 

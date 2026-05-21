@@ -169,3 +169,13 @@ model StockNote {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 }
+
+// Cache des cotations BRVM alimenté par le cron toutes les 15min
+model BRVMCache {
+  id        String   @id                    // ex: "quotes"
+  data      Json                             // BRVMQuote[]
+  source    String   @default("static")     // 'sikafinance' | 'brvm.org' | 'static'
+  itemCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

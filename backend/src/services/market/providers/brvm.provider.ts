@@ -9,6 +9,7 @@ import {
   IMarketProvider, Quote, HistoricalPoint, StockProfile,
   NewsItem, EarningsEvent, SearchResult,
 } from '../types'
+import prisma from '../../../config/prisma'
 
 const BASE_BRVM  = 'https://www.brvm.org'
 const BASE_SIKA  = 'https://www.sikafinance.com'
@@ -230,11 +231,24 @@ export class BRVMProvider implements IMarketProvider {
   /* ── Fetch + cache de toutes les cotations ─────────────────── */
   private async fetchAllQuotes(): Promise<BRVMQuote[]> {
     const now = Date.now()
-    if (this._quotesCache && now - this._cacheTs < this.CACHE_TTL) {
+
+    // 1. Cache mémoire chaud (5 min) — évite les allers-retours DB
+    if (this._quotesCache && now - this._cacheTs < 5 * 60_000) {
       return this._quotesCache
     }
 
-    // brvm.org peut bloquer les IPs cloud (Railway, Vercel) → fallback silencieux
+    // 2. Cache DB (alimenté par le cron toutes les 15min)
+    try {
+      const row = await prisma.bRVMCache.findUnique({ where: { id: 'quotes' } })
+      if (row && Array.isArray(row.data) && (row.data as any[]).length > 0) {
+        const data = row.data as unknown as BRVMQuote[]
+        this._quotesCache = data
+        this._cacheTs     = now
+        return data
+      }
+    } catch { /* DB indisponible ou table pas encore migrée */ }
+
+    // 3. Fetch live direct (fallback — utile en dev ou si le cron n'a pas encore tourné)
     try {
       const html   = await brvmFetch(`${BASE_BRVM}/fr/cours-des-actions/0/tableau`)
       const quotes = parseCoursTable(html)
@@ -243,11 +257,9 @@ export class BRVMProvider implements IMarketProvider {
         this._cacheTs     = now
         return quotes
       }
-    } catch {
-      // brvm.org inaccessible depuis ce serveur — données statiques sans prix
-    }
+    } catch { /* brvm.org bloqué depuis ce serveur */ }
 
-    // Fallback statique : liste complète sans prix (service non dispo)
+    // 4. Données statiques sans prix (dernier recours)
     return Object.entries(BRVM_COMPANIES).map(([symbol, info]) => ({
       symbol, name: info.name, price: 0, change: 0, changePercent: 0,
       volume: 0, sector: info.sector, country: info.country,

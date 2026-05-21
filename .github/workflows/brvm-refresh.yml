@@ -1,0 +1,44 @@
+name: BRVM Data Refresh
+
+# Séances BRVM : lun-ven 09:00-15:30 UTC (Abidjan = GMT/UTC)
+# GitHub cron syntax : minutes heures jour-du-mois mois jour-de-la-semaine
+on:
+  schedule:
+    # Toutes les 15 min, de 09h00 à 15h30, lun-ven
+    - cron: '0,15,30,45 9,10,11,12,13,14 * * 1-5'   # 09:00-14:45
+    - cron: '0,15,30 15 * * 1-5'                     # 15:00-15:30
+    # Hors séance : une fois par heure pour maintenir les données fraîches
+    - cron: '0 0-8,16-23 * * 1-5'                    # nuit et soir en semaine
+    - cron: '0 8 * * 0,6'                             # week-end — 1 fois par jour
+  workflow_dispatch:   # Déclenchement manuel depuis l'onglet Actions
+
+jobs:
+  refresh:
+    name: Refresh BRVM quotes
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Trigger BRVM data refresh
+        env:
+          RAILWAY_URL: https://backend-production-541b.up.railway.app
+          CRON_SECRET: ${{ secrets.BRVM_CRON_SECRET }}
+        run: |
+          echo "Triggering BRVM refresh at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+          HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${CRON_SECRET}" \
+            --max-time 30 \
+            "${RAILWAY_URL}/api/market/brvm/refresh")
+
+          echo "HTTP Status: ${HTTP_STATUS}"
+          cat /tmp/response.json
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "❌ Refresh failed with status ${HTTP_STATUS}"
+            exit 1
+          fi
+
+          echo "✅ Refresh successful"

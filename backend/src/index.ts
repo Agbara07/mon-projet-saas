@@ -13,6 +13,7 @@ import watchlistRoutes from './routes/watchlist.routes'
 import notesRoutes from './routes/notes.routes'
 import { initWebSocket } from './services/websocket.service'
 import { startAlertEngine } from './services/alert.service'
+import { startBRVMCron } from './services/brvm-cron.service'
 
 dotenv.config()
 
@@ -43,6 +44,7 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 const server = createServer(app)
 initWebSocket(server)
 startAlertEngine()
+startBRVMCron()
 
 // Empêche le crash sur promesses rejetées non gérées (ex: Yahoo Finance timeout)
 process.on('unhandledRejection', (reason) => {

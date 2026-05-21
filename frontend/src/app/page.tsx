@@ -294,15 +294,35 @@ export default function Landing() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center font-black text-black text-sm shadow-lg shadow-green-500/20 group-hover:shadow-green-500/40 transition-shadow">I</div>
               <span className="font-bold text-lg">InvestSaaS</span>
             </Link>
-            <div className="hidden lg:flex items-center gap-1">
-              {[{l:'Investir',href:'#features'},{l:'Screener',href:'#features'},{l:'Alertes',href:'#features'},{l:'Gold',href:'#gold',gold:true},{l:'Apprendre',href:'#faq'}].map(item=>(
-                <a key={item.l} href={item.href} className={cn('px-3 py-1.5 text-sm rounded-lg transition-colors',item.gold?'text-yellow-400 hover:text-yellow-300':'text-zinc-400 hover:text-white hover:bg-white/5')}>{item.l}</a>
+            <div className="hidden lg:flex items-center gap-0.5">
+              {[
+                {l:'Investir',  href:'#features'},
+                {l:'Screener',  href:'#features'},
+                {l:'Alertes',   href:'#features'},
+                {l:'Gold',      href:'#gold',     badge:'GOLD'},
+                {l:'Apprendre', href:'#faq'},
+              ].map(item => (
+                <a key={item.l} href={item.href}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+                  {item.l}
+                  {/* micro-badge fond sombre, police mono — remplace le "Gold" jaune */}
+                  {item.badge && (
+                    <span className="text-[9px] font-mono font-bold bg-zinc-800/80 text-zinc-400 border border-zinc-700/60 px-1.5 py-0.5 rounded tracking-widest leading-none">
+                      {item.badge}
+                    </span>
+                  )}
+                </a>
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="hidden sm:block text-sm text-zinc-400 hover:text-white transition-colors px-3 py-2">Connexion</Link>
-            <Link href="/register" className="bg-white text-black text-sm px-5 py-2.5 rounded-xl font-bold hover:bg-zinc-100 transition-all shadow-lg shadow-white/10 hover:shadow-white/20">
+          {/* gap-6 → plus d'espace entre Connexion et Commencer */}
+          <div className="flex items-center gap-6">
+            <Link href="/login"
+              className="hidden sm:block text-sm text-slate-400 hover:text-white transition-colors">
+              Connexion
+            </Link>
+            <Link href="/register"
+              className="bg-white text-black text-sm px-5 py-2.5 rounded-xl font-bold hover:bg-zinc-100 transition-all shadow-lg shadow-white/10 hover:shadow-white/20">
               Commencer
             </Link>
           </div>
@@ -313,18 +333,25 @@ export default function Landing() {
       <div className="pt-16 bg-zinc-950/50 border-b border-white/[.04] overflow-hidden">
         <div className="flex gap-10 whitespace-nowrap py-2.5 animate-ticker" style={{width:'max-content'}}>
           {[...TICKERS,...TICKERS].map((t,i)=>(
-            <span key={i} className="flex items-center gap-2 text-xs font-mono">
-              <span className="text-zinc-500">{t.s}</span>
-              <span className="text-white font-semibold tabular-nums">{t.p}</span>
-              <span className={t.up?'text-green-400':'text-red-400'}>{t.c}</span>
+            <span key={i} className="flex items-center gap-2 text-xs">
+              {/* ticker — uppercase compact */}
+              <span className="text-zinc-600 font-mono uppercase tracking-wide">{t.s}</span>
+              {/* prix — monospace + tabular-nums pour alignement parfait */}
+              <span className="text-white font-mono font-semibold tabular-nums">{t.p}</span>
+              {/* variation — Koyfin muted : teal-green #26a69a / coral-red #ef5350 */}
+              <span className="font-mono font-bold tabular-nums"
+                style={{color: t.up ? '#26a69a' : '#ef5350'}}>
+                {t.c}
+              </span>
             </span>
           ))}
         </div>
       </div>
 
       {/* ── Hero ───────────────────────────────────────────── */}
+      {/* pt-12 → CTA visible sans scroll sur écrans 900px+ */}
       <motion.section ref={heroRef} style={{opacity:heroOpacity,scale:heroScale}}
-        className="relative overflow-hidden pt-20 pb-16 px-5">
+        className="relative overflow-hidden pt-12 pb-10 px-5">
         {/* bg effects */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(34,197,94,0.07),transparent)] pointer-events-none"/>
         <div className="absolute top-20 left-1/3 w-96 h-96 bg-green-600/[.04] rounded-full blur-3xl pointer-events-none"/>
@@ -337,20 +364,23 @@ export default function Landing() {
             </span>
           </motion.div>
 
+          {/* mt-5 → moins de blanc avant le titre */}
           <motion.h1 initial={{opacity:0,y:24}} animate={{opacity:1,y:0}} transition={{duration:.65,delay:.1,ease:[.22,1,.36,1]}}
-            className="mt-7 text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-[1.02] tracking-tight text-balance">
+            className="mt-5 text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-[1.02] tracking-tight text-balance">
             Investissez avec la<br/>
             <span className="gradient-text-green">précision des pros.</span>
           </motion.h1>
 
+          {/* text-slate-300 → description lisible, plus claire que zinc-400 */}
           <motion.p initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:.6,delay:.2}}
-            className="mt-6 text-zinc-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+            className="mt-5 text-slate-300 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
             Portfolio tracker temps réel, screener institutionnel, alertes intelligentes et calendrier des résultats.
             Tout ce dont vous avez besoin pour investir mieux.
           </motion.p>
 
+          {/* mt-7 → CTA remonté, visible sans scroll sur 900px */}
           <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:.6,delay:.3}}
-            className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+            className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/register" className="group inline-flex items-center gap-2 bg-white text-black px-8 py-4 rounded-2xl text-base font-bold hover:bg-zinc-100 transition-all shadow-2xl shadow-white/10 hover:shadow-white/20 hover:-translate-y-0.5">
               Ouvrir un compte gratuit
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/>
@@ -363,10 +393,10 @@ export default function Landing() {
             Rejoignez 12 400+ investisseurs · Annulation à tout moment · Setup en 2 minutes
           </motion.p>
 
-          {/* Hero mockup */}
+          {/* Hero mockup — mt-10 : légèrement sous le CTA, amorçage visuel */}
           <motion.div initial={{opacity:0,y:40,scale:.96}} animate={{opacity:1,y:0,scale:1}}
             transition={{duration:.8,delay:.4,ease:[.22,1,.36,1]}}
-            className="mt-16 relative max-w-5xl mx-auto">
+            className="mt-10 relative max-w-5xl mx-auto">
             <div className="animate-float">
               <PortfolioMock/>
             </div>

@@ -11,6 +11,8 @@ import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { PctBadge } from '@/components/ui/PctBadge'
+import { Sparkline, generateSparkline } from '@/components/ui/Sparkline'
 
 interface StockResult {
   symbol:string; name:string; price:number; change:number
@@ -223,37 +225,41 @@ export default function ScreenerPage() {
                 return (
                   <motion.tr key={s.symbol}
                     initial={{opacity:0}} animate={{opacity:1}} transition={{delay:Math.min(i,15)*0.02}}
-                    className={cn('border-b border-[var(--fin-border)] last:border-0 transition-colors group','hover:bg-[var(--fin-hover)]')}>
-                    <td className="px-3 py-2">
+                    /* kf-row: 28px densité Koyfin */
+                    className="kf-row group">
+                    <td className="px-3">
                       <div className="flex items-center gap-2">
-                        <Link href={`/stock/${s.symbol}`} className="font-mono font-bold text-xs text-[var(--fin-t1)] hover:text-[var(--fin-blue)] transition-colors">
+                        {/* bb-ticker: Bloomberg uppercase monospace */}
+                        <Link href={`/stock/${s.symbol}`} className="bb-ticker hover:text-[var(--fin-blue)] transition-colors">
                           {s.symbol}
                         </Link>
                         <span className="text-[9px] text-[var(--fin-t3)] truncate max-w-[120px]">{s.name}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-xs text-[var(--fin-t1)] font-bold tabular-nums">
-                      ${s.price.toFixed(2)}
+                    {/* kf-num: prix monospace aligné */}
+                    <td className="px-3 text-right">
+                      <span className="kf-num text-xs font-bold text-[var(--fin-t1)]">${s.price.toFixed(2)}</span>
                     </td>
-                    <td className={cn('px-3 py-2 text-right font-mono text-xs font-bold tabular-nums', up?'text-[var(--fin-green)]':'text-[var(--fin-red)]')}>
-                      <span className="flex items-center justify-end gap-0.5">
-                        {up ? '▲' : '▼'}{Math.abs(s.changePercent).toFixed(2)}%
+                    {/* PctBadge Koyfin muted */}
+                    <td className="px-3 text-right">
+                      <PctBadge value={s.changePercent} size="xs"/>
+                    </td>
+                    <td className="px-3 text-right">
+                      <span className="kf-num text-[10px] text-[var(--fin-t2)]">
+                        {s.volume >= 1e6 ? `${(s.volume/1e6).toFixed(1)}M` : s.volume >= 1e3 ? `${(s.volume/1e3).toFixed(0)}K` : String(s.volume)}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-xs text-[var(--fin-t2)] tabular-nums">
-                      {s.volume >= 1e6 ? `${(s.volume/1e6).toFixed(1)}M` : s.volume >= 1e3 ? `${(s.volume/1e3).toFixed(0)}K` : s.volume}
+                    <td className="px-3 text-right"><span className="kf-num text-[10px] text-[var(--fin-t2)]">{fmt(s.marketCap)}</span></td>
+                    <td className="px-3 text-right">
+                      <span className="kf-num text-[10px] text-[var(--fin-t2)]">{s.pe != null ? s.pe.toFixed(1) : '—'}</span>
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-xs text-[var(--fin-t2)] tabular-nums">{fmt(s.marketCap)}</td>
-                    <td className="px-3 py-2 text-right font-mono text-xs text-[var(--fin-t2)] tabular-nums">
-                      {s.pe != null ? s.pe.toFixed(1) : '—'}
+                    <td className="px-3 text-right">
+                      <span className="kf-num text-[10px] text-[var(--fin-green)]">{s.week52High != null ? `$${s.week52High.toFixed(2)}` : '—'}</span>
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-[10px] text-[var(--fin-green)] tabular-nums">
-                      {s.week52High != null ? `$${s.week52High.toFixed(2)}` : '—'}
+                    <td className="px-3 text-right">
+                      <span className="kf-num text-[10px] text-[var(--fin-red)]">{s.week52Low != null ? `$${s.week52Low.toFixed(2)}` : '—'}</span>
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-[10px] text-[var(--fin-red)] tabular-nums">
-                      {s.week52Low != null ? `$${s.week52Low.toFixed(2)}` : '—'}
-                    </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3">
                       <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => toggleWatchlist(s)}
                           className={cn('w-6 h-6 rounded flex items-center justify-center transition-colors',

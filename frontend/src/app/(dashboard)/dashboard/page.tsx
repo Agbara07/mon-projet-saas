@@ -12,6 +12,8 @@ import Link from 'next/link'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 import MarketPulseWidget from '@/components/terminal/MarketPulseWidget'
+import { PctBadge } from '@/components/ui/PctBadge'
+import { Sparkline, generateSparkline } from '@/components/ui/Sparkline'
 
 interface User { id:string; name:string; email:string; role:string; organization:{ name:string; plan:string } }
 interface Index { symbol:string; name:string; price:number; change:number; changePercent:number }
@@ -156,12 +158,12 @@ export default function DashboardPage() {
                 active ? 'bg-[var(--fin-active)]' : 'hover:bg-[var(--fin-hover)]'
               )}>
               <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-wide">{INDEX_NAMES[idx.symbol] ?? idx.symbol}</span>
-              <span className="text-sm font-bold text-[var(--fin-t1)] font-mono mt-0.5 tabular-nums">
+              {/* ← kf-num: monospace + tabular-nums Koyfin */}
+              <span className="kf-num text-sm font-bold text-[var(--fin-t1)] mt-0.5">
                 {idx.price?.toLocaleString('fr-FR', { maximumFractionDigits:2 })}
               </span>
-              <span className={cn('text-[10px] font-bold font-mono flex items-center gap-0.5', up ? 'text-[var(--fin-green)]' : 'text-[var(--fin-red)]')}>
-                {up ? '▲' : '▼'}{Math.abs(idx.changePercent ?? 0).toFixed(2)}%
-              </span>
+              {/* ← PctBadge Koyfin: fond teinté pastel */}
+              <PctBadge value={idx.changePercent ?? 0} size="xs"/>
             </button>
           )
         })}
@@ -244,12 +246,13 @@ export default function DashboardPage() {
                       <span className="text-[10px] text-[var(--fin-t3)] truncate">{w.companyName}</span>
                     </div>
                     {w.quote && (
-                      <div className="text-right flex-shrink-0 ml-2">
-                        <p className="font-mono text-xs text-[var(--fin-t1)] font-bold tabular-nums">${w.quote.price.toFixed(2)}</p>
-                        <p className={cn('font-mono text-[10px] font-bold tabular-nums',
-                          w.quote.changePercent >= 0 ? 'text-[var(--fin-green)]' : 'text-[var(--fin-red)]')}>
-                          {w.quote.changePercent >= 0 ? '+' : ''}{w.quote.changePercent.toFixed(2)}%
-                        </p>
+                      <div className="text-right flex-shrink-0 ml-2 space-y-0.5">
+                        {/* kf-num: prix monospace aligné */}
+                        <p className="kf-num text-xs font-bold text-[var(--fin-t1)]">${w.quote.price.toFixed(2)}</p>
+                        {/* PctBadge Koyfin muted */}
+                        <div className="flex justify-end">
+                          <PctBadge value={w.quote.changePercent} size="xs"/>
+                        </div>
                       </div>
                     )}
                   </Link>
@@ -294,10 +297,7 @@ export default function DashboardPage() {
                         {col.future ? (
                           <span className="font-mono text-[10px] text-[var(--fin-blue)]">{e.date}</span>
                         ) : e.surprisePct !== undefined ? (
-                          <span className={cn('font-mono text-[10px] font-bold',
-                            e.surprisePct >= 0 ? 'text-[var(--fin-green)]' : 'text-[var(--fin-red)]')}>
-                            {e.surprisePct >= 0 ? '+' : ''}{e.surprisePct.toFixed(1)}%
-                          </span>
+                          <PctBadge value={e.surprisePct} size="xs" showArrow={false}/>
                         ) : (
                           <span className="font-mono text-[9px] text-[var(--fin-t3)]">{e.date}</span>
                         )}

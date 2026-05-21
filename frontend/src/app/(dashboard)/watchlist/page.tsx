@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Eye, Search, TrendingUp, TrendingDown, Trash2, RefreshCw, Plus, X, Radio } from 'lucide-react'
+import { Eye, Search, Trash2, RefreshCw, Plus, X, Radio } from 'lucide-react'
 import api from '@/lib/api'
 import Link from 'next/link'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { PctBadge } from '@/components/ui/PctBadge'
+import { Sparkline, generateSparkline } from '@/components/ui/Sparkline'
 
 interface WatchItem {
   id:string; symbol:string; companyName:string; addedAt:string
@@ -170,13 +172,15 @@ export default function WatchlistPage() {
           <table className="w-full">
             <thead className={cn('sticky top-0 z-10 border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
               <tr>
-                <SH col="symbol"        label="Symbole"/>
+                <SH col="symbol"        label="Ticker"/>
                 <SH col="price"         label="Prix"      right/>
                 <SH col="changePercent" label="Var%"      right/>
                 <SH col="volume"        label="Volume"    right/>
                 <SH col="marketCap"     label="Mkt Cap"   right/>
                 <SH col="pe"            label="P/E"       right/>
-                <th className="px-3 py-1.5 w-20"/>
+                {/* Sparkline 7j — Koyfin signature */}
+                <th className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[var(--fin-t3)] w-24 text-right">7J</th>
+                <th className="px-3 py-1.5 w-16"/>
               </tr>
             </thead>
             <tbody>
@@ -187,19 +191,25 @@ export default function WatchlistPage() {
                 return (
                   <motion.tr key={item.id}
                     initial={{opacity:0}} animate={{opacity:1}} transition={{delay:i*0.02}}
-                    className={cn('border-b border-[var(--fin-border)] last:border-0 transition-colors group','hover:bg-[var(--fin-hover)]')}>
-                    <td className="px-3 py-2">
+                    /* kf-row → hauteur 28px, densité Koyfin */
+                    className="kf-row group">
+                    <td className="px-3">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-xs text-[var(--fin-t1)]">{item.symbol}</span>
-                        {connected && <span className="w-1.5 h-1.5 rounded-full bg-[var(--fin-green)] animate-pulse"/>}
-                        <span className="text-[9px] text-[var(--fin-t3)] truncate max-w-[120px]">{item.companyName}</span>
+                        {/* bb-ticker → Bloomberg uppercase monospace */}
+                        <span className="bb-ticker">{item.symbol}</span>
+                        {connected && <span className="w-1.5 h-1.5 rounded-full bg-[var(--fin-green)] animate-pulse flex-shrink-0"/>}
+                        <span className="text-[9px] text-[var(--fin-t3)] truncate max-w-[110px]">{item.companyName}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-xs font-bold text-[var(--fin-t1)] tabular-nums">
-                      {live > 0 ? `$${live.toFixed(2)}` : '—'}
+                    {/* kf-num → prix monospace tabular */}
+                    <td className="px-3 text-right">
+                      <span className="kf-num text-xs font-bold text-[var(--fin-t1)]">
+                        {live > 0 ? `$${live.toFixed(2)}` : '—'}
+                      </span>
                     </td>
-                    <td className={cn('px-3 py-2 text-right font-mono text-xs font-bold tabular-nums', up?'text-[var(--fin-green)]':'text-[var(--fin-red)]')}>
-                      {up?'▲':'▼'}{Math.abs(chg).toFixed(2)}%
+                    {/* PctBadge Koyfin muted */}
+                    <td className="px-3 text-right">
+                      <PctBadge value={chg} size="xs"/>
                     </td>
                     <td className="px-3 py-2 text-right font-mono text-[10px] text-[var(--fin-t2)] tabular-nums">
                       {item.quote?.volume ? (item.quote.volume>=1e6?`${(item.quote.volume/1e6).toFixed(1)}M`:`${(item.quote.volume/1e3).toFixed(0)}K`) : '—'}
@@ -207,18 +217,31 @@ export default function WatchlistPage() {
                     <td className="px-3 py-2 text-right font-mono text-[10px] text-[var(--fin-t2)] tabular-nums">
                       {item.quote?.marketCap ? (item.quote.marketCap>=1e12?`$${(item.quote.marketCap/1e12).toFixed(2)}T`:item.quote.marketCap>=1e9?`$${(item.quote.marketCap/1e9).toFixed(1)}B`:`$${(item.quote.marketCap/1e6).toFixed(0)}M`) : '—'}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-[10px] text-[var(--fin-t2)] tabular-nums">
-                      {item.quote?.pe != null ? item.quote.pe.toFixed(1) : '—'}
+                    <td className="px-3 text-right">
+                      <span className="kf-num text-[10px] text-[var(--fin-t2)]">
+                        {item.quote?.pe != null ? item.quote.pe.toFixed(1) : '—'}
+                      </span>
                     </td>
-                    <td className="px-3 py-2">
+                    {/* Sparkline Koyfin — générée depuis price+change */}
+                    <td className="px-3">
+                      <div className="flex justify-end">
+                        {live > 0 && (
+                          <Sparkline
+                            data={generateSparkline(item.symbol, chg, live)}
+                            width={72} height={22}
+                          />
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Link href={`/stock/${item.symbol}`}
-                          className="w-6 h-6 rounded flex items-center justify-center text-[var(--fin-t3)] hover:text-[var(--fin-blue)] hover:bg-[var(--fin-blue-bg)] transition-colors">
-                          <Eye size={11} strokeWidth={1.5}/>
+                          className="w-5 h-5 rounded flex items-center justify-center text-[var(--fin-t3)] hover:text-[var(--fin-blue)] hover:bg-[var(--fin-blue-bg)] transition-colors">
+                          <Eye size={10} strokeWidth={1.5}/>
                         </Link>
                         <button onClick={() => remove(item.id, item.symbol)}
-                          className="w-6 h-6 rounded flex items-center justify-center text-[var(--fin-t3)] hover:text-[var(--fin-red)] hover:bg-[var(--fin-red-bg)] transition-colors">
-                          <Trash2 size={11} strokeWidth={1.5}/>
+                          className="w-5 h-5 rounded flex items-center justify-center text-[var(--fin-t3)] hover:text-[var(--fin-red)] hover:bg-[var(--fin-red-bg)] transition-colors">
+                          <Trash2 size={10} strokeWidth={1.5}/>
                         </button>
                       </div>
                     </td>

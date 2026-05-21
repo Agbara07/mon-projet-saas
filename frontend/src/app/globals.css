@@ -50,31 +50,46 @@
   --brand-dim:     var(--fin-green-bg);
 }
 
-/* ── Dark mode — Bloomberg Terminal ─────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   FUSION BLOOMBERG × KOYFIN × TRADINGVIEW
+   TradingView deep navy | Koyfin muted perf | Bloomberg amber
+   ══════════════════════════════════════════════════════════════ */
 .dark {
-  /* Surfaces */
-  --fin-bg:        #0B0E11;
-  --fin-panel:     #131920;
-  --fin-surface:   #1A2230;
-  --fin-hover:     #202C3E;
-  --fin-active:    #243348;
-  /* Borders — ultra-fines, semi-transparentes */
-  --fin-border:    rgba(255,255,255,0.07);
-  --fin-border-2:  rgba(255,255,255,0.14);
-  /* Typography — WCAG AA compliant (ratios calculés sur #131920) */
-  --fin-t1:        #E2EAF4;   /* ratio ~12.8:1 ✓ AAA */
-  --fin-t2:        #9AAFC4;   /* ratio ~5.6:1  ✓ AA  */
-  --fin-t3:        #6A8098;   /* ratio ~3.5:1  ✓ AA large text / labels */
-  /* Semantic colors */
-  --fin-green:     #0ECB81;
-  --fin-green-bg:  rgba(14,203,129,.12);
-  --fin-red:       #F6465D;
-  --fin-red-bg:    rgba(246,70,93,.12);
-  --fin-amber:     #F0B90B;
-  --fin-amber-bg:  rgba(240,185,11,.12);
-  --fin-blue:      #3B8EF3;
-  --fin-blue-bg:   rgba(59,142,243,.12);
-  --fin-cyan:      #00B8D9;
+  /* ── Surfaces — TradingView navy ──────────────────────────── */
+  --fin-bg:        #0c0e17;   /* TV: fond global deep navy             */
+  --fin-panel:     #131722;   /* TV: couleur signature des panneaux    */
+  --fin-surface:   #1c2030;   /* TV: cartes et surfaces surélevées     */
+  --fin-hover:     #1e2332;   /* TV: hover state                       */
+  --fin-active:    #243050;   /* TV: sélection active                  */
+
+  /* ── Bordures chirurgicales — TradingView ─────────────────── */
+  --fin-border:    rgba(42,46,57,0.65);   /* 1px quasi-invisible       */
+  --fin-border-2:  rgba(74,82,101,0.50);  /* légèrement visible        */
+
+  /* ── Typographie — TradingView × Bloomberg ────────────────── */
+  --fin-t1:  #d1d4dc;   /* TV: texte principal, off-white chaud ✓ AAA */
+  --fin-t2:  #9098a4;   /* TV: texte secondaire lisible          ✓ AA  */
+  --fin-t3:  #606470;   /* TV: labels/muted                      ✓ AA labels */
+
+  /* ── Performance — KOYFIN muted palette ──────────────────── */
+  --fin-green:     #26a69a;               /* Koyfin: vert teal discret */
+  --fin-green-bg:  rgba(38,166,154,0.10); /* fond badge hausses        */
+  --fin-red:       #ef5350;               /* Koyfin: rouge corail      */
+  --fin-red-bg:    rgba(239,83,80,0.10);  /* fond badge baisses        */
+
+  /* ── Accent — Bloomberg orange ───────────────────────────── */
+  --fin-amber:     #ff9800;               /* Bloomberg signature       */
+  --fin-amber-bg:  rgba(255,152,0,0.10);
+
+  /* ── Sélection — TradingView blue ────────────────────────── */
+  --fin-blue:      #2962ff;               /* TV: bleu sélection exact  */
+  --fin-blue-bg:   rgba(41,98,255,0.12);
+
+  /* ── Cyan ──────────────────────────────────────────────────── */
+  --fin-cyan:      #00bcd4;
+
+  /* ── TradingView panel shadow ─────────────────────────────── */
+  --tv-shadow: 0 1px 3px rgba(0,0,0,0.50), 0 4px 16px rgba(0,0,0,0.25);
   /* Legacy compat */
   --bg:            var(--fin-bg);
   --bg-card:       var(--fin-panel);
@@ -254,3 +269,105 @@ body {
 /* ── Details/summary reset ─────────────────────────────────── */
 details > summary                      { list-style: none; cursor: pointer; }
 details > summary::-webkit-details-marker { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════
+   KOYFIN DATA UTILITIES
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Nombre financier Koyfin — monospace + tabular nums */
+.kf-num {
+  font-family: 'JetBrains Mono', 'Roboto Mono', 'SF Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em;
+}
+
+/* Badge de performance Koyfin — hausse */
+.kf-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: var(--fin-green);
+  background: var(--fin-green-bg);
+}
+
+/* Badge de performance Koyfin — baisse */
+.kf-dn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: var(--fin-red);
+  background: var(--fin-red-bg);
+}
+
+/* Badge neutre */
+.kf-flat {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: var(--fin-t3);
+  background: var(--fin-surface);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TRADINGVIEW PANEL UTILITIES
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Panneau flottant TradingView */
+.tv-panel {
+  background: var(--fin-panel);
+  border: 1px solid var(--fin-border);
+  box-shadow: var(--tv-shadow, none);
+}
+
+/* Ligne de table compacte Koyfin — 28px height */
+.kf-row {
+  height: 28px;
+  border-bottom: 1px solid var(--fin-border);
+  transition: background-color 80ms ease;
+}
+.kf-row:hover { background: var(--fin-hover); }
+.kf-row:last-child { border-bottom: none; }
+
+/* Header de section Bloomberg — compact uppercase */
+.bb-section-head {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--fin-t3);
+  padding: 6px 12px 4px;
+  border-bottom: 1px solid var(--fin-border);
+  background: var(--fin-surface);
+}
+
+/* Ticker Bloomberg — bold monospace uppercase */
+.bb-ticker {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--fin-t1);
+}

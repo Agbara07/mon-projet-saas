@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { useDebounceValue } from 'usehooks-ts'
 import { motion } from 'framer-motion'
 import {
   Globe, TrendingUp, TrendingDown, BarChart3, MapPin,
@@ -127,7 +129,7 @@ export default function BRVMPage() {
   const sectors   = Array.from(new Set(quotes.map(q=>q.sector))).sort()
   const countries = Array.from(new Set(quotes.map(q=>q.country))).sort()
   const filtered  = quotes.filter(q => {
-    const s = search.toLowerCase()
+    const s = debouncedSearch.toLowerCase()
     if (s && !q.symbol.toLowerCase().includes(s) && !q.name.toLowerCase().includes(s)) return false
     if (filterSector  && q.sector  !== filterSector)  return false
     if (filterCountry && q.country !== filterCountry) return false
@@ -138,6 +140,14 @@ export default function BRVMPage() {
   })
 
   const handleSort = (k:string) => { if(k===sortKey)setSortDir(d=>d==='asc'?'desc':'asc'); else{setSortKey(k);setSortDir('desc')} }
+  const [debouncedSearch] = useDebounceValue(search, 250)
+  const tableParentRef  = useRef<HTMLDivElement>(null)
+  const rowVirtualizer  = useVirtualizer({
+    count:           filtered.length,
+    getScrollElement: () => tableParentRef.current,
+    estimateSize:    () => 48,
+    overscan:        8,
+  })
 
   const runCostSimulator = async () => {
     try {
@@ -325,23 +335,39 @@ export default function BRVMPage() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {loading ? Array.from({length:8}).map((_,i)=>(
-                      <tr key={i}>{Array.from({length:8}).map((_,j)=><td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse"/></td>)}</tr>
-                    )) : filtered.map(q=>(
-                      <tr key={q.symbol} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 font-bold text-blue-700">{q.symbol}</td>
-                        <td className="px-4 py-3 text-gray-900 max-w-44 truncate">{q.name}</td>
-                        <td className="px-4 py-3 font-mono font-bold text-gray-900">{q.price>0?q.price.toLocaleString('fr-FR'):'—'}</td>
-                        <td className={cn('px-4 py-3 font-bold',q.changePercent>0?'text-green-600':q.changePercent<0?'text-red-600':'text-gray-400')}>{q.changePercent>0?'+':''}{q.changePercent.toFixed(2)}%</td>
-                        <td className="px-4 py-3 text-gray-600">{fmtVol(q.volume)}</td>
-                        <td className="px-4 py-3 text-gray-600">{fmtXOF(q.marketCap)}</td>
-                        <td className="px-4 py-3"><span className={cn('px-2 py-0.5 rounded-full text-xs font-semibold',SECTOR_COLORS[q.sector]??'bg-gray-100 text-gray-600')}>{q.sector}</span></td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{COUNTRY_FLAGS[q.country]??''} {q.country}</td>
-                      </tr>
-                    ))}
-                  </tbody>
                 </table>
+                {/* Table body virtualisée */}
+                <div ref={tableParentRef} className="overflow-y-auto" style={{maxHeight:'480px'}}>
+                  {loading ? (
+                    <table className="w-full text-sm"><tbody className="divide-y divide-gray-50">
+                      {Array.from({length:8}).map((_,i)=>(
+                        <tr key={i}>{Array.from({length:8}).map((_,j)=><td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse"/></td>)}</tr>
+                      ))}
+                    </tbody></table>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <tbody style={{height:`${rowVirtualizer.getTotalSize()}px`,position:'relative'}}>
+                        {rowVirtualizer.getVirtualItems().map(vRow => {
+                          const q = filtered[vRow.index]
+                          return (
+                            <tr key={q.symbol} data-index={vRow.index}
+                              style={{position:'absolute',top:0,left:0,width:'100%',height:`${vRow.size}px`,transform:`translateY(${vRow.start}px)`}}
+                              className="hover:bg-gray-50 border-b border-gray-50">
+                              <td className="px-4 py-3 font-bold text-blue-700 w-20">{q.symbol}</td>
+                              <td className="px-4 py-3 text-gray-900 max-w-44 truncate">{q.name}</td>
+                              <td className="px-4 py-3 font-mono font-bold text-gray-900">{q.price>0?q.price.toLocaleString('fr-FR'):'—'}</td>
+                              <td className={cn('px-4 py-3 font-bold',q.changePercent>0?'text-green-600':q.changePercent<0?'text-red-600':'text-gray-400')}>{q.changePercent>0?'+':''}{q.changePercent.toFixed(2)}%</td>
+                              <td className="px-4 py-3 text-gray-600">{fmtVol(q.volume)}</td>
+                              <td className="px-4 py-3 text-gray-600">{fmtXOF(q.marketCap)}</td>
+                              <td className="px-4 py-3"><span className={cn('px-2 py-0.5 rounded-full text-xs font-semibold',SECTOR_COLORS[q.sector]??'bg-gray-100 text-gray-600')}>{q.sector}</span></td>
+                              <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{COUNTRY_FLAGS[q.country]??''} {q.country}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
               </div>
             </Card>
           </div>

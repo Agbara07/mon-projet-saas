@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useDebounceValue } from 'usehooks-ts'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, SlidersHorizontal, TrendingUp, TrendingDown, ArrowUpDown, Plus, X, Zap } from 'lucide-react'
 import api from '@/lib/api'

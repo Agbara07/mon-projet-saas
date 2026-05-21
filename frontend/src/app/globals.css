@@ -5,20 +5,88 @@
 /* ── Google Fonts ──────────────────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* ── CSS Variables ─────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   BLOOMBERG / FACTSET DESIGN SYSTEM — InvestSaaS
+   Light = FactSet/Capital IQ  |  Dark = Bloomberg Terminal
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Light mode (défaut) ───────────────────────────────────── */
 :root {
-  --radius: 0.75rem;
-  --bg:            #000000;
-  --bg-card:       #0a0a0a;
-  --bg-surface:    #111111;
-  --bg-elevated:   #1a1a1a;
-  --border:        rgba(255,255,255,0.06);
-  --border-hover:  rgba(255,255,255,0.12);
-  --text-primary:  #ffffff;
-  --text-secondary:#a1a1aa;
-  --text-muted:    #52525b;
-  --brand:         #22c55e;
-  --brand-dim:     rgba(34,197,94,0.12);
+  --radius: 0.5rem;
+  /* Surfaces */
+  --fin-bg:        #F2F4F7;
+  --fin-panel:     #FFFFFF;
+  --fin-surface:   #F8FAFC;
+  --fin-hover:     #EEF2F7;
+  --fin-active:    #E4ECF7;
+  /* Borders */
+  --fin-border:    #D0D8E4;
+  --fin-border-2:  #B0BCCC;
+  /* Typography */
+  --fin-t1:        #0A1929;
+  --fin-t2:        #3D5166;
+  --fin-t3:        #7A90A8;
+  /* Semantic colors */
+  --fin-green:     #00875A;
+  --fin-green-bg:  #E3FCEF;
+  --fin-red:       #DE350B;
+  --fin-red-bg:    #FFEBE6;
+  --fin-amber:     #C25100;
+  --fin-amber-bg:  #FFF4E5;
+  --fin-blue:      #0052CC;
+  --fin-blue-bg:   #E8F0FF;
+  --fin-cyan:      #008DA6;
+  /* Legacy compat */
+  --bg:            var(--fin-bg);
+  --bg-card:       var(--fin-panel);
+  --bg-surface:    var(--fin-surface);
+  --bg-elevated:   var(--fin-hover);
+  --border:        var(--fin-border);
+  --border-hover:  var(--fin-border-2);
+  --text-primary:  var(--fin-t1);
+  --text-secondary:var(--fin-t2);
+  --text-muted:    var(--fin-t3);
+  --brand:         var(--fin-green);
+  --brand-dim:     var(--fin-green-bg);
+}
+
+/* ── Dark mode — Bloomberg Terminal ─────────────────────────── */
+.dark {
+  /* Surfaces */
+  --fin-bg:        #0B0E11;
+  --fin-panel:     #131920;
+  --fin-surface:   #1A2230;
+  --fin-hover:     #202C3E;
+  --fin-active:    #243348;
+  /* Borders */
+  --fin-border:    #263040;
+  --fin-border-2:  #344860;
+  /* Typography */
+  --fin-t1:        #D8E1EE;
+  --fin-t2:        #7A8CA0;
+  --fin-t3:        #3E4E60;
+  /* Semantic colors */
+  --fin-green:     #0ECB81;
+  --fin-green-bg:  rgba(14,203,129,.12);
+  --fin-red:       #F6465D;
+  --fin-red-bg:    rgba(246,70,93,.12);
+  --fin-amber:     #F0B90B;
+  --fin-amber-bg:  rgba(240,185,11,.12);
+  --fin-blue:      #3B8EF3;
+  --fin-blue-bg:   rgba(59,142,243,.12);
+  --fin-cyan:      #00B8D9;
+  /* Legacy compat */
+  --bg:            var(--fin-bg);
+  --bg-card:       var(--fin-panel);
+  --bg-surface:    var(--fin-surface);
+  --bg-elevated:   var(--fin-hover);
+  --border:        var(--fin-border);
+  --border-hover:  var(--fin-border-2);
+  --text-primary:  var(--fin-t1);
+  --text-secondary:var(--fin-t2);
+  --text-muted:    var(--fin-t3);
+  --brand:         var(--fin-green);
+  --brand-dim:     var(--fin-green-bg);
 }
 
 /* ── Base ──────────────────────────────────────────────────── */
@@ -30,8 +98,8 @@ html {
 }
 
 body {
-  background-color: var(--bg);
-  color: var(--text-primary);
+  background-color: var(--fin-bg);
+  color: var(--fin-t1);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

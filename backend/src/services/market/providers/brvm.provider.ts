@@ -234,20 +234,24 @@ export class BRVMProvider implements IMarketProvider {
       return this._quotesCache
     }
 
-    const html = await brvmFetch(`${BASE_BRVM}/fr/cours-des-actions/0/tableau`)
-    const quotes = parseCoursTable(html)
-
-    if (quotes.length > 0) {
-      this._quotesCache = quotes
-      this._cacheTs     = now
-      return quotes
+    // brvm.org peut bloquer les IPs cloud (Railway, Vercel) → fallback silencieux
+    try {
+      const html   = await brvmFetch(`${BASE_BRVM}/fr/cours-des-actions/0/tableau`)
+      const quotes = parseCoursTable(html)
+      if (quotes.length > 0) {
+        this._quotesCache = quotes
+        this._cacheTs     = now
+        return quotes
+      }
+    } catch {
+      // brvm.org inaccessible depuis ce serveur — données statiques sans prix
     }
 
-    // Fallback: retourner les données statiques avec prix à 0 (service non dispo)
+    // Fallback statique : liste complète sans prix (service non dispo)
     return Object.entries(BRVM_COMPANIES).map(([symbol, info]) => ({
       symbol, name: info.name, price: 0, change: 0, changePercent: 0,
       volume: 0, sector: info.sector, country: info.country,
-      currency: 'XOF', provider: 'brvm',
+      currency: 'XOF', provider: 'brvm-static',
     }))
   }
 
@@ -266,9 +270,12 @@ export class BRVMProvider implements IMarketProvider {
   }
 
   async getHistorical(symbol: string, period = '1mo'): Promise<HistoricalPoint[]> {
-    const sym  = symbol.toUpperCase()
-    const html = await brvmFetch(`${BASE_BRVM}/fr/valeurs/0/historique/${sym}`)
-    const all  = parseHistoricalTable(html)
+    const sym = symbol.toUpperCase()
+    let all: HistoricalPoint[] = []
+    try {
+      const html = await brvmFetch(`${BASE_BRVM}/fr/valeurs/0/historique/${sym}`)
+      all = parseHistoricalTable(html)
+    } catch { return [] }
 
     // Filtrer par période
     const days: Record<string,number> = {

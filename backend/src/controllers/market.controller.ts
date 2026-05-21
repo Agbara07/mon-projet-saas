@@ -126,14 +126,18 @@ export const brvmStockLiquidity = handle(async (req, res) => {
   res.json(computeLiquidityScore(sym, quote?.price ?? 0))
 })
 
-// Outil 2 : Dividendes — screener complet
+// Outil 2 : Dividendes — screener complet (fonctionne même sans prix live)
 export const brvmDividends = handle(async (_req, res) => {
-  const quotes = await (brvmProvider as any).getBRVMQuotes()
-  const priceMap = new Map(quotes.map((q: any) => [q.symbol, q.price]))
   const { BRVM_COMPANIES } = await import('../services/market/providers/brvm.provider')
+  // Essayer d'obtenir les prix live, sinon continuer avec prix=0
+  let priceMap = new Map<string, number>()
+  try {
+    const quotes = await (brvmProvider as any).getBRVMQuotes()
+    priceMap = new Map(quotes.filter((q: any) => q.price > 0).map((q: any) => [q.symbol, q.price]))
+  } catch { /* brvm.org inaccessible — dividendes sans rendement calculé */ }
   const result = Object.keys(BRVM_COMPANIES).map(sym =>
-    computeDividendData(sym, (priceMap.get(sym) as number) ?? 0)
-  ).sort((a, b) => b.currentYield - a.currentYield)
+    computeDividendData(sym, priceMap.get(sym) ?? 0)
+  ).sort((a, b) => b.lastDividend - a.lastDividend)
   res.json(result)
 })
 

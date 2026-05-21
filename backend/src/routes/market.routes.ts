@@ -6,6 +6,12 @@ import {
   etfDetails, etfHoldings, etfSectors, etfPerformance, etfByCategory,
   brvmQuotes, brvmQuote, brvmHistorical, brvmIndices,
   brvmSectors, brvmCountries, brvmMarket, brvmCompanies,
+  // Outils d'analyse BRVM
+  brvmLiquidity, brvmStockLiquidity,
+  brvmDividends, brvmStockDividend,
+  brvmCommodities, brvmStockCommodity,
+  brvmAfricaComparison, brvmMacro,
+  brvmGovernance, brvmTransactionCost,
 } from '../controllers/market.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 
@@ -35,6 +41,18 @@ router.get('/brvm/market',              brvmMarket)
 router.get('/brvm/companies',           brvmCompanies)
 router.get('/brvm/:symbol/quote',       brvmQuote)
 router.get('/brvm/:symbol/historical',  brvmHistorical)
+router.get('/brvm/:symbol/liquidity',   brvmStockLiquidity)
+router.get('/brvm/:symbol/dividend',    brvmStockDividend)
+router.get('/brvm/:symbol/commodity',   brvmStockCommodity)
+
+// ── Outils d'analyse BRVM ──────────────────────────────────
+router.get('/brvm/tools/liquidity',     brvmLiquidity)
+router.get('/brvm/tools/dividends',     brvmDividends)
+router.get('/brvm/tools/commodities',   brvmCommodities)
+router.get('/brvm/tools/africa',        brvmAfricaComparison)
+router.get('/brvm/tools/macro',         brvmMacro)
+router.get('/brvm/tools/governance',    brvmGovernance)
+router.post('/brvm/tools/cost',         brvmTransactionCost)
 
 // ── Par symbole ────────────────────────────────────────────
 router.get('/:symbol/quote',         quote)

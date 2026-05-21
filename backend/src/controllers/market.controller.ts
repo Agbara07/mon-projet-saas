@@ -1,6 +1,13 @@
 import { Request, Response } from 'express'
 import { marketRouter, benzingaProvider, tmxProvider, etfGlobalProvider, brvmProvider } from '../services/market/market-router'
 import { ScreenerFilters } from '../services/market/types'
+import {
+  getAllLiquidityScores, computeLiquidityScore,
+  computeDividendData, getAllGovernanceScores, computeGovernanceScore,
+  getAfricanMarketsComparison, getUEMOAMacroDashboard,
+  computeCommodityCorrelation, COMMODITY_MAP,
+  simulateTransactionCost,
+} from '../services/market/providers/brvm-tools.provider'
 
 const handle = (fn: (req: Request, res: Response) => Promise<any>) =>
   async (req: Request, res: Response) => {
@@ -103,6 +110,81 @@ export const etfSectors = handle(async (req, res) => {
 // ETF Global : performance multi-périodes
 export const etfPerformance = handle(async (req, res) => {
   res.json(await (etfGlobalProvider as any).getETFPerformance(req.params.symbol.toUpperCase()))
+})
+
+// ── Outils d'analyse BRVM ───────────────────────────────────
+
+// Outil 1 : Liquidité — tous les titres
+export const brvmLiquidity = handle(async (_req, res) => {
+  res.json(getAllLiquidityScores())
+})
+
+// Outil 1 : Liquidité — titre individuel
+export const brvmStockLiquidity = handle(async (req, res) => {
+  const sym   = req.params.symbol.toUpperCase()
+  const quote = await brvmProvider.getQuote(sym).catch(() => null)
+  res.json(computeLiquidityScore(sym, quote?.price ?? 0))
+})
+
+// Outil 2 : Dividendes — screener complet
+export const brvmDividends = handle(async (_req, res) => {
+  const quotes = await (brvmProvider as any).getBRVMQuotes()
+  const priceMap = new Map(quotes.map((q: any) => [q.symbol, q.price]))
+  const { BRVM_COMPANIES } = await import('../services/market/providers/brvm.provider')
+  const result = Object.keys(BRVM_COMPANIES).map(sym =>
+    computeDividendData(sym, (priceMap.get(sym) as number) ?? 0)
+  ).sort((a, b) => b.currentYield - a.currentYield)
+  res.json(result)
+})
+
+// Outil 2 : Dividendes — titre individuel
+export const brvmStockDividend = handle(async (req, res) => {
+  const sym   = req.params.symbol.toUpperCase()
+  const quote = await brvmProvider.getQuote(sym).catch(() => null)
+  res.json(computeDividendData(sym, quote?.price ?? 0))
+})
+
+// Outil 3 : Corrélation matières premières — tous les titres liés
+export const brvmCommodities = handle(async (_req, res) => {
+  const symbols  = Object.keys(COMMODITY_MAP)
+  const results  = await Promise.allSettled(
+    symbols.map(async sym => {
+      const hist = await brvmProvider.getHistorical(sym, '3mo').catch(() => [])
+      return computeCommodityCorrelation(sym, hist)
+    })
+  )
+  res.json(results.filter(r => r.status === 'fulfilled').map((r: any) => r.value))
+})
+
+// Outil 3 : Corrélation matières premières — titre individuel
+export const brvmStockCommodity = handle(async (req, res) => {
+  const sym  = req.params.symbol.toUpperCase()
+  const hist = await brvmProvider.getHistorical(sym, '3mo').catch(() => [])
+  res.json(await computeCommodityCorrelation(sym, hist))
+})
+
+// Outil 4 : Comparateur bourses africaines
+export const brvmAfricaComparison = handle(async (_req, res) => {
+  res.json(getAfricanMarketsComparison())
+})
+
+// Outil 5 : Tableau de bord macro UEMOA
+export const brvmMacro = handle(async (_req, res) => {
+  res.json(getUEMOAMacroDashboard())
+})
+
+// Outil 6 : Scores de gouvernance — tous les titres
+export const brvmGovernance = handle(async (_req, res) => {
+  res.json(getAllGovernanceScores())
+})
+
+// Outil 7 : Simulateur coût de transaction
+export const brvmTransactionCost = handle(async (req, res) => {
+  const input = req.body
+  if (!input?.amount || !input?.type || !input?.country) {
+    return res.status(400).json({ message: 'Champs requis: amount, type, country' })
+  }
+  res.json(simulateTransactionCost(input))
 })
 
 // ETF Global : recherche ETF par catégorie

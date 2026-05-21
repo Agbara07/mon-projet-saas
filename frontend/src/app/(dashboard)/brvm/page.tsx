@@ -12,6 +12,13 @@ import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/Card'
 import { toast } from 'sonner'
+import CountUp from 'react-countup'
+import {
+  ScoreGauge, GovernanceGauge, KPICounter,
+  DividendBarChart, AfricaRadarChart, SectorPieChart, CorrelationHeatmap,
+} from '@/components/brvm/BRVMCharts'
+
+const CountUpSafe = ({ end }: { end: number }) => <CountUp end={end} duration={1.2} useEasing />
 
 /* ── Types ──────────────────────────────────────────────── */
 interface BRVMQuote { symbol:string; name:string; price:number; change:number; changePercent:number; volume:number; marketCap?:number; sector:string; country:string; currency:string }
@@ -176,21 +183,29 @@ export default function BRVMPage() {
         </button>
       </div>
 
-      {/* KPIs ───────────────────────────────────────────── */}
+      {/* KPIs avec CountUp ──────────────────────────────── */}
       {market && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label:'Capitalisation totale', value:fmtXOF(market.totalMarketCap), sub:`${quotes.filter(q=>q.price>0).length} sociétés cotées` },
-            { label:'Séance', value:`▲${market.advancers} / ▼${market.decliners}`, sub:`${market.unchanged} inchangés` },
-            { label:'Volume total', value:fmtVol(market.totalVolume), sub:'Titres échangés' },
-            { label:'Date', value:market.date, sub:'Données fin de journée' },
-          ].map(({label,value,sub})=>(
-            <Card key={label} className="p-4">
-              <p className="text-xs text-gray-500 font-medium">{label}</p>
-              <p className="text-base font-black text-gray-900 mt-0.5">{value}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
-            </Card>
-          ))}
+          <Card className="p-4">
+            <KPICounter value={Math.round((market.totalMarketCap??0)/1e9)} suffix=" Md XOF" label="Capitalisation totale" sub={`${quotes.filter(q=>q.price>0).length} sociétés cotées`} color="text-blue-700"/>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-gray-500 font-medium">Séance du jour</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-xl font-black text-green-600"><CountUpSafe end={market.advancers}/></span>
+              <span className="text-gray-300">/</span>
+              <span className="text-xl font-black text-red-600"><CountUpSafe end={market.decliners}/></span>
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5">{market.unchanged} inchangés</p>
+          </Card>
+          <Card className="p-4">
+            <KPICounter value={market.totalVolume} label="Volume total (titres)" sub="Échangés ce jour" color="text-purple-700"/>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-gray-500 font-medium">Séance</p>
+            <p className="text-base font-black text-gray-900 mt-0.5">{market.date}</p>
+            <p className="text-xs text-gray-400 mt-0.5">Données fin de journée</p>
+          </Card>
         </div>
       )}
 
@@ -334,19 +349,26 @@ export default function BRVMPage() {
 
         {/* ── Secteurs ── */}
         {tab==='sectors' && market && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {market.sectors.map(s=>(
-              <Card key={s.sector} className="p-5">
-                <div className="flex items-start justify-between mb-2">
-                  <span className={cn('px-2.5 py-1 rounded-xl text-xs font-bold',SECTOR_COLORS[s.sector]??'bg-gray-100 text-gray-600')}>{s.sector}</span>
-                  <span className={cn('text-sm font-bold',s.avgChange>0?'text-green-600':s.avgChange<0?'text-red-600':'text-gray-400')}>{s.avgChange>0?'+':''}{s.avgChange.toFixed(2)}%</span>
-                </div>
-                <p className="text-xs text-gray-400 mb-2">{s.stockCount} société{s.stockCount>1?'s':''}</p>
-                <p className="text-lg font-black text-gray-900">{fmtXOF(s.marketCap)}</p>
-                <div className="flex gap-3 mt-2 text-xs"><span className="text-green-600">▲ {s.advancers}</span><span className="text-gray-400">— {s.unchanged}</span><span className="text-red-600">▼ {s.decliners}</span></div>
-                <div className="mt-2 h-1.5 bg-gray-100 rounded-full"><div className={cn('h-full rounded-full',s.avgChange>=0?'bg-green-400':'bg-red-400')} style={{width:`${Math.min(Math.abs(s.avgChange)*20,100)}%`}}/></div>
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <Card className="p-5">
+                <h3 className="font-bold text-gray-900 mb-3">Capitalisation par secteur</h3>
+                <SectorPieChart sectors={market.sectors} />
               </Card>
-            ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {market.sectors.map(s=>(
+                  <Card key={s.sector} className="p-4">
+                    <div className="flex items-start justify-between mb-1.5">
+                      <span className={cn('px-2 py-0.5 rounded-lg text-xs font-bold',SECTOR_COLORS[s.sector]??'bg-gray-100 text-gray-600')}>{s.sector}</span>
+                      <span className={cn('text-sm font-bold',s.avgChange>0?'text-green-600':s.avgChange<0?'text-red-600':'text-gray-400')}>{s.avgChange>0?'+':''}{s.avgChange.toFixed(2)}%</span>
+                    </div>
+                    <p className="text-sm font-black text-gray-900">{fmtXOF(s.marketCap)}</p>
+                    <p className="text-xs text-gray-400">{s.stockCount} sociétés</p>
+                    <div className="flex gap-3 mt-1.5 text-xs"><span className="text-green-600">▲{s.advancers}</span><span className="text-gray-400">—{s.unchanged}</span><span className="text-red-600">▼{s.decliners}</span></div>
+                  </Card>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -396,10 +418,7 @@ export default function BRVMPage() {
                               <td className="px-4 py-3 text-gray-400 font-mono text-xs">{i+1}</td>
                               <td className="px-4 py-3"><span className="font-bold text-blue-700">{l.symbol}</span>{l.isInBRVM10&&<span className="ml-1.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs rounded font-bold">BRVM10</span>}</td>
                               <td className="px-4 py-3">
-                                <div className="flex items-center gap-2">
-                                  <span className={cn('text-sm font-black',scoreColor(l.liquidityScore))}>{l.liquidityScore}</span>
-                                  <div className="w-16 h-1.5 bg-gray-100 rounded-full"><div className={cn('h-full rounded-full',l.liquidityScore>=70?'bg-green-500':l.liquidityScore>=40?'bg-yellow-500':'bg-red-400')} style={{width:`${l.liquidityScore}%`}}/></div>
-                                </div>
+                                <ScoreGauge value={l.liquidityScore} size={44} />
                               </td>
                               <td className="px-4 py-3"><span className={cn('px-2 py-0.5 rounded-full text-xs font-semibold',catColors[l.category]??'bg-gray-100 text-gray-600')}>{l.category}</span></td>
                               <td className="px-4 py-3 font-mono text-sm">{l.tradingFreq}%</td>
@@ -456,7 +475,7 @@ export default function BRVMPage() {
                               </td>
                               <td className="px-4 py-3 text-gray-600">{d.payoutRatio?`${d.payoutRatio}%`:'—'}</td>
                               <td className="px-4 py-3">
-                                <div className="flex gap-0.5">{Array.from({length:5}).map((_,i)=><div key={i} className={cn('w-2 h-2 rounded-full',i<d.consistency?'bg-green-500':'bg-gray-200')}/>)}</div>
+                                <div className="w-28"><DividendBarChart history={d.history.slice(0,4)} height={36}/></div>
                                 <span className="text-xs text-gray-400">{d.consistency} an{d.consistency>1?'s':''}</span>
                               </td>
                               <td className="px-4 py-3 font-mono text-sm">{d.gordonFairValue?d.gordonFairValue.toLocaleString('fr-FR'):'—'}</td>
@@ -485,6 +504,11 @@ export default function BRVMPage() {
             {loadingTab ? <Skeleton n={6}/> : commodities.length===0 ? (
               <Card className="p-12 text-center text-gray-400">Calcul des corrélations en cours… (données Yahoo Finance)</Card>
             ) : (
+              <>
+              <Card className="p-5">
+                <h3 className="font-bold text-gray-900 mb-4">Corrélations 90 jours — vue d'ensemble</h3>
+                <CorrelationHeatmap correlations={commodities.filter(c=>c.correlation90d!==0)} />
+              </Card>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {commodities.map(c=>(
                   <Card key={c.symbol} className="p-5">
@@ -502,6 +526,7 @@ export default function BRVMPage() {
                   </Card>
                 ))}
               </div>
+              </>
             )}
           </div>
         )}
@@ -513,6 +538,12 @@ export default function BRVMPage() {
               <div className="flex items-start gap-3"><Info size={16} className="text-purple-600 mt-0.5 flex-shrink-0"/><div><p className="text-sm font-bold text-purple-900">Comparateur Bourses Africaines</p><p className="text-xs text-purple-700 mt-1">La BRVM représente ~14,5 Mds USD de capitalisation sur les ~1 400 Mds USD des bourses africaines. Sa singularité : devise ancrée à l'euro (0% risque XOF/EUR), faible corrélation avec les marchés développés, rendement dividende élevé.</p><p className="text-xs text-purple-500 mt-1">Sources : ASEA Annual Statistics 2023 ; FMI WEO Oct 2024 ; Banque Mondiale GFDD 2024</p></div></div>
             </Card>
             {loadingTab ? <Skeleton n={6}/> : (
+              <>
+              <Card className="p-5">
+                <h3 className="font-bold text-gray-900 mb-4">Radar de comparaison — métriques normalisées</h3>
+                <AfricaRadarChart markets={africa} />
+                <p className="text-xs text-gray-400 text-center mt-2">P/E attractif = P/E bas vs pairs ; Rdt div. = rendement dividende ; Perf. YTD = performance sur l'année</p>
+              </Card>
               <div className="space-y-4">
                 {africa.map(m=>(
                   <Card key={m.market} className={cn('p-5',m.market==='BRVM'&&'border-2 border-green-300 bg-green-50/30')}>
@@ -547,6 +578,7 @@ export default function BRVMPage() {
                   </Card>
                 ))}
               </div>
+              </>
             )}
           </div>
         )}
@@ -631,21 +663,17 @@ export default function BRVMPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {governance.map(g=>(
                   <Card key={g.symbol} className={cn('p-5 border',scoreBg(g.totalScore))}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div><p className="font-black text-gray-900">{g.symbol} <span className="font-normal text-gray-500 text-sm">— {g.name}</span></p><p className="text-xs text-gray-400 mt-0.5">{g.auditor} {g.parentCompany&&`• ${g.parentCompany}`}</p></div>
-                      <div className="text-right"><p className={cn('text-2xl font-black',scoreColor(g.totalScore))}>{g.totalScore}</p><p className="text-xs text-gray-400">/100</p></div>
+                    <div className="mb-3">
+                      <p className="font-black text-gray-900">{g.symbol} <span className="font-normal text-gray-500 text-sm">— {g.name}</span></p>
+                      <p className="text-xs text-gray-400 mt-0.5">{g.auditor}{g.parentCompany&&` • ${g.parentCompany}`}</p>
                     </div>
-                    <div className="grid grid-cols-4 gap-1.5 mb-3">
-                      {[{label:'Audit',val:g.auditScore,max:25},{label:'Transp.',val:g.transparencyScore,max:25},{label:'Dividende',val:g.dividendScore,max:25},{label:'Actionnaire',val:g.parentScore,max:25}].map(({label,val,max})=>(
-                        <div key={label} className="text-center bg-white/60 rounded-lg p-1.5">
-                          <p className="text-xs text-gray-500">{label}</p>
-                          <p className={cn('text-sm font-black',scoreColor(val/max*100))}>{val}</p>
-                          <div className="mt-1 h-1 bg-gray-200 rounded-full"><div className={cn('h-full rounded-full',val/max>=0.7?'bg-green-500':val/max>=0.4?'bg-yellow-500':'bg-red-400')} style={{width:`${(val/max)*100}%`}}/></div>
-                        </div>
-                      ))}
-                    </div>
-                    {g.strengths.length>0&&<div className="mb-2">{g.strengths.map(s=><div key={s} className="flex items-center gap-1.5 text-xs text-green-700 mb-0.5"><CheckCircle size={11} className="flex-shrink-0"/>{s}</div>)}</div>}
-                    {g.warnings.length>0&&<div>{g.warnings.map(w=><div key={w} className="flex items-center gap-1.5 text-xs text-red-600 mb-0.5"><AlertTriangle size={11} className="flex-shrink-0"/>{w}</div>)}</div>}
+                    <GovernanceGauge total={g.totalScore} audit={g.auditScore} transparency={g.transparencyScore} dividend={g.dividendScore} parent={g.parentScore}/>
+                    {(g.strengths.length>0||g.warnings.length>0)&&(
+                      <div className="mt-3 space-y-0.5">
+                        {g.strengths.map(s=><div key={s} className="flex items-center gap-1.5 text-xs text-green-700"><CheckCircle size={10}/>{s}</div>)}
+                        {g.warnings.map(w=><div key={w} className="flex items-center gap-1.5 text-xs text-red-600"><AlertTriangle size={10}/>{w}</div>)}
+                      </div>
+                    )}
                   </Card>
                 ))}
               </div>

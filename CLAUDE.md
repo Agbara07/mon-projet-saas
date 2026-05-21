@@ -123,6 +123,8 @@ GET /:symbol/tsx               → cotation TSX en CAD
 - TTL cache : QUOTE=30s, HISTORICAL=5min, PROFILE=15min, NEWS=5min
 - Circuit breaker : s'ouvre après 5 erreurs consécutives, récupère après 2min
 - `railway.json` contient le startCommand — ne pas supprimer `npx prisma migrate deploy`
+- `tsconfig.json` backend : `"ignoreDeprecations": "5.0"` requis (moduleResolution node déprécié en TS5)
+- Exclure `**/*.test.tsx` dans `tsconfig.json` sinon le build échoue
 
 ### Frontend
 - Tailwind CSS — fond global `#f5f6fa` (bg-[#f5f6fa] ou bg-gray-50)
@@ -130,6 +132,29 @@ GET /:symbol/tsx               → cotation TSX en CAD
 - lightweight-charts **v5** : utiliser `chart.addSeries(AreaSeries, ...)` — **pas** `addAreaSeries()`
 - `api.ts` : instance axios avec base URL `NEXT_PUBLIC_API_URL`, interceptor JWT auto-refresh
 - Animations : Framer Motion (`motion.div` avec `initial/animate`)
+
+## Bugs et workarounds connus
+
+### Yahoo Finance (abandonné)
+Le package `yahoo-finance2` est cassé en production (Railway) à cause d'un redirect Yahoo (`/quote/AAPL` → `/quote/AAPL/`).
+**Solution** : fetch direct sur l'API v8 sans authentification :
+```
+https://query1.finance.yahoo.com/v8/finance/chart/{SYMBOL}?interval=1d&range=1mo
+```
+Ne pas réinstaller `yahoo-finance2` — utiliser les 12 providers à la place.
+
+### Railway — buildCommand
+Ne jamais définir un `buildCommand` custom dans `railway.json` ou via l'API Railway.
+Railpack auto-détecte Node.js + TypeScript et compile correctement.
+Un `buildCommand` custom override railpack et casse le build.
+
+### Railway — `railway up`
+Lancer `railway up` depuis la **racine du projet** (`mon-projet-saas/`), pas depuis `backend/`.
+Railway utilise `rootDirectory: backend` configuré dans le service — le CLI doit être à la racine.
+
+### Portfolio — chargement
+`loadPortfolio` et `loadHistory` sont deux fonctions async séparées dans `portfolio/page.tsx`.
+`loadHistory` a son propre try/catch pour ne pas bloquer le portfolio si Yahoo Finance timeout.
 
 ## Déploiement
 

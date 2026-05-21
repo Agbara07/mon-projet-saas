@@ -10,15 +10,14 @@ import {
 } from 'lucide-react'
 
 const NAV = [
-  { href:'/dashboard', label:'Dashboard',    Icon:LayoutDashboard, key:'1' },
-  { href:'/portfolio', label:'Portfolio',    Icon:BarChart3,        key:'2' },
-  { href:'/watchlist', label:'Watchlist',    Icon:Eye,              key:'3' },
-  { href:'/screener',  label:'Screener',     Icon:Search,           key:'4' },
-  { href:'/calendar',  label:'Calendrier',   Icon:CalendarDays,     key:'5' },
-  { href:'/alerts',    label:'Alertes',      Icon:Bell,             key:'6' },
-  { href:'/brvm',      label:'BRVM',         Icon:Globe,            key:'7' },
+  { href:'/dashboard', label:'Dashboard',  Icon:LayoutDashboard, key:'1', shortcut:'Ctrl+1' },
+  { href:'/portfolio', label:'Portfolio',  Icon:BarChart3,        key:'2', shortcut:'Ctrl+2' },
+  { href:'/watchlist', label:'Watchlist',  Icon:Eye,              key:'3', shortcut:'Ctrl+3' },
+  { href:'/screener',  label:'Screener',   Icon:Search,           key:'4', shortcut:'Ctrl+4' },
+  { href:'/calendar',  label:'Calendrier', Icon:CalendarDays,     key:'5', shortcut:'Ctrl+5' },
+  { href:'/alerts',    label:'Alertes',    Icon:Bell,             key:'6', shortcut:'Ctrl+6' },
+  { href:'/brvm',      label:'BRVM',       Icon:Globe,            key:'7', shortcut:'Ctrl+7' },
 ]
-
 const NAV_BOTTOM = [
   { href:'/billing',  label:'Abonnement', Icon:CreditCard },
   { href:'/settings', label:'Paramètres', Icon:Settings   },
@@ -29,7 +28,6 @@ export default function Sidebar() {
   const pathname = usePathname()
   const router   = useRouter()
 
-  // Raccourcis clavier Ctrl/⌘ + chiffre
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return
@@ -44,73 +42,104 @@ export default function Sidebar() {
     pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
 
   return (
-    <aside className={cn(
-      'w-[186px] min-h-screen flex flex-col flex-shrink-0',
-      'bg-[var(--fin-panel)] border-r border-[var(--fin-border)]',
-    )}>
-
-      {/* Logo */}
-      <div className="px-4 py-3 border-b border-[var(--fin-border)]">
-        <Link href="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="w-7 h-7 rounded-md bg-[var(--fin-green)] flex items-center justify-center flex-shrink-0">
-            <TrendingUp size={14} strokeWidth={2.5} className="text-white"/>
+    <aside
+      role="navigation"
+      aria-label="Navigation principale"
+      className={cn(
+        'w-[172px] min-h-screen flex flex-col flex-shrink-0',
+        'bg-[var(--fin-panel)]',
+        /* Bordure droite parfaitement alignée avec la topbar */
+        'border-r border-[var(--fin-border)]',
+      )}
+    >
+      {/* ── Logo ── */}
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-[var(--fin-border)]">
+        <Link
+          href="/dashboard"
+          aria-label="InvestSaaS Terminal — Accueil"
+          className="flex items-center gap-2 group outline-none focus-visible:ring-2 focus-visible:ring-[var(--fin-blue)] rounded"
+        >
+          <div className="w-6 h-6 rounded bg-[var(--fin-green)] flex items-center justify-center flex-shrink-0" aria-hidden="true">
+            <TrendingUp size={12} strokeWidth={2.5} className="text-white"/>
           </div>
           <div>
-            <p className="font-bold text-[var(--fin-t1)] text-sm leading-none tracking-tight">InvestSaaS</p>
-            <p className="text-[var(--fin-t3)] text-[10px] mt-0.5 font-mono tracking-wider uppercase">Terminal</p>
+            <p className="font-bold text-[var(--fin-t1)] text-[11px] leading-none tracking-tight">InvestSaaS</p>
+            <p className="text-[var(--fin-t3)] text-[9px] mt-0.5 font-mono tracking-widest uppercase">Terminal</p>
           </div>
         </Link>
       </div>
 
-      {/* Navigation principale */}
-      <nav className="flex-1 px-2 py-2 space-y-px overflow-y-auto">
-        <p className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-[0.1em] px-2 py-1.5 mb-0.5">
+      {/* ── Nav principale ── */}
+      <nav className="flex-1 px-1.5 py-1.5 overflow-y-auto" aria-label="Marchés">
+        <p
+          className="text-[8px] font-bold text-[var(--fin-t3)] uppercase tracking-[0.15em] px-2 py-1 mb-0.5"
+          aria-hidden="true"
+        >
           Marchés
         </p>
 
-        {NAV.map(({ href, label, Icon, key }) => {
+        {NAV.map(({ href, label, Icon, key, shortcut }) => {
           const active = isActive(href)
           return (
-            <Link key={href} href={href}
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? 'page' : undefined}
+              aria-keyshortcuts={shortcut}
+              title={`${label} — ${shortcut}`}
               className={cn(
-                'flex items-center gap-2.5 px-2 py-1.5 rounded text-xs font-medium transition-all group',
+                'flex items-center gap-2 px-2 py-1 rounded text-[11px] font-medium transition-colors group',
                 active
                   ? 'bg-[var(--fin-active)] text-[var(--fin-blue)]'
-                  : 'text-[var(--fin-t2)] hover:bg-[var(--fin-hover)] hover:text-[var(--fin-t1)]'
-              )}>
-              <Icon size={14} strokeWidth={1.5} className={cn(
-                'flex-shrink-0',
-                active ? 'text-[var(--fin-blue)]' : 'text-[var(--fin-t3)] group-hover:text-[var(--fin-t2)]'
-              )}/>
+                  : 'text-[var(--fin-t2)] hover:bg-[var(--fin-hover)] hover:text-[var(--fin-t1)]',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fin-blue)] focus-visible:ring-inset'
+              )}
+            >
+              <Icon
+                size={13}
+                strokeWidth={1.5}
+                aria-hidden="true"
+                className={cn(
+                  'flex-shrink-0 transition-colors',
+                  active ? 'text-[var(--fin-blue)]' : 'text-[var(--fin-t3)] group-hover:text-[var(--fin-t2)]'
+                )}
+              />
               <span className="flex-1 truncate">{label}</span>
-              <kbd className={cn(
-                'hidden group-hover:flex items-center text-[9px] font-mono px-1 py-0.5 rounded',
-                'bg-[var(--fin-surface)] text-[var(--fin-t3)] border border-[var(--fin-border)]'
-              )}>
+              <kbd
+                aria-hidden="true"
+                className={cn(
+                  'hidden group-hover:flex items-center text-[8px] font-mono px-1 py-0.5 rounded leading-none',
+                  'bg-[var(--fin-surface)] text-[var(--fin-t3)] border border-[var(--fin-border)]'
+                )}
+              >
                 ⌘{key}
               </kbd>
             </Link>
           )
         })}
 
-        <div className="pt-3">
-          <p className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-[0.1em] px-2 py-1.5 mb-0.5">
+        {/* ── Compte ── */}
+        <div className="mt-2 pt-2 border-t border-[var(--fin-border)]" aria-label="Compte">
+          <p className="text-[8px] font-bold text-[var(--fin-t3)] uppercase tracking-[0.15em] px-2 py-1 mb-0.5" aria-hidden="true">
             Compte
           </p>
           {NAV_BOTTOM.map(({ href, label, Icon }) => {
             const active = isActive(href)
             return (
-              <Link key={href} href={href}
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-2.5 px-2 py-1.5 rounded text-xs font-medium transition-all group',
+                  'flex items-center gap-2 px-2 py-1 rounded text-[11px] font-medium transition-colors group',
                   active
                     ? 'bg-[var(--fin-active)] text-[var(--fin-blue)]'
-                    : 'text-[var(--fin-t2)] hover:bg-[var(--fin-hover)] hover:text-[var(--fin-t1)]'
-                )}>
-                <Icon size={14} strokeWidth={1.5} className={cn(
-                  'flex-shrink-0',
-                  active ? 'text-[var(--fin-blue)]' : 'text-[var(--fin-t3)] group-hover:text-[var(--fin-t2)]'
-                )}/>
+                    : 'text-[var(--fin-t2)] hover:bg-[var(--fin-hover)] hover:text-[var(--fin-t1)]',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fin-blue)] focus-visible:ring-inset'
+                )}
+              >
+                <Icon size={13} strokeWidth={1.5} aria-hidden="true"
+                  className={cn('flex-shrink-0', active ? 'text-[var(--fin-blue)]' : 'text-[var(--fin-t3)] group-hover:text-[var(--fin-t2)]')}/>
                 <span>{label}</span>
               </Link>
             )
@@ -118,17 +147,26 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      {/* Footer upgrade */}
-      <div className="px-2 py-2 border-t border-[var(--fin-border)]">
-        <Link href="/billing"
+      {/* ── Footer Pro ── */}
+      <div className="px-1.5 py-1.5 border-t border-[var(--fin-border)]">
+        <Link
+          href="/billing"
           className={cn(
-            'flex items-center gap-2 px-2.5 py-2 rounded text-xs transition-all',
-            'bg-[var(--fin-green-bg)] border border-[var(--fin-green)] border-opacity-30',
-            'text-[var(--fin-green)] hover:bg-opacity-80'
-          )}>
-          <CreditCard size={12} strokeWidth={1.5}/>
-          <span className="font-medium">Passer à Pro</span>
+            'flex items-center gap-2 px-2.5 py-1.5 rounded text-[11px] transition-all',
+            'bg-[var(--fin-green-bg)] text-[var(--fin-green)]',
+            'border border-[var(--fin-green)] border-opacity-25',
+            'hover:border-opacity-50 hover:bg-opacity-80',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fin-green)]'
+          )}
+        >
+          <CreditCard size={11} strokeWidth={1.5} aria-hidden="true"/>
+          <span className="font-semibold">Passer à Pro</span>
         </Link>
+
+        {/* Légende raccourcis clavier */}
+        <p className="text-[8px] text-[var(--fin-t3)] font-mono text-center mt-1.5 leading-relaxed">
+          ⌘K Palette · ⌘1–7 Nav
+        </p>
       </div>
     </aside>
   )

@@ -4,13 +4,14 @@ import { useEffect, useState, useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import {
-  TrendingUp, TrendingDown, BarChart3, Search, Bell,
+  TrendingUp, TrendingDown, BarChart3,
   Calendar, Eye, ArrowRight, Zap, Activity, RefreshCw,
-  Globe, Clock,
+  Clock,
 } from 'lucide-react'
 import Link from 'next/link'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import MarketPulseWidget from '@/components/terminal/MarketPulseWidget'
 
 interface User { id:string; name:string; email:string; role:string; organization:{ name:string; plan:string } }
 interface Index { symbol:string; name:string; price:number; change:number; changePercent:number }
@@ -21,13 +22,39 @@ const INDEX_NAMES: Record<string,string> = {
   SPY:'S&P 500', QQQ:'NASDAQ', DIA:'Dow', IWM:'Russell', '^VIX':'VIX',
 }
 
-const QUICK = [
-  { href:'/portfolio', Icon:BarChart3, label:'Portfolio',  key:'⌘2' },
-  { href:'/screener',  Icon:Search,    label:'Screener',   key:'⌘4' },
-  { href:'/alerts',    Icon:Bell,      label:'Alertes',    key:'⌘6' },
-  { href:'/calendar',  Icon:Calendar,  label:'Calendrier', key:'⌘5' },
-  { href:'/brvm',      Icon:Globe,     label:'BRVM',       key:'⌘7' },
-]
+/* ── Skeleton row animé pour états vides ── */
+function SkeletonWatchRow() {
+  return (
+    <div
+      className="flex items-center justify-between px-3 py-2 border-b border-[var(--fin-border)] last:border-0"
+      aria-hidden="true"
+    >
+      <div className="flex items-center gap-2">
+        <div className="w-12 h-2.5 rounded bg-[var(--fin-hover)] animate-pulse"/>
+        <div className="w-20 h-2 rounded bg-[var(--fin-hover)] animate-pulse opacity-60"/>
+      </div>
+      <div className="flex flex-col items-end gap-1">
+        <div className="w-14 h-2.5 rounded bg-[var(--fin-hover)] animate-pulse"/>
+        <div className="w-10 h-2 rounded bg-[var(--fin-hover)] animate-pulse opacity-60"/>
+      </div>
+    </div>
+  )
+}
+
+function SkeletonEarningsRow() {
+  return (
+    <div
+      className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--fin-border)] last:border-0"
+      aria-hidden="true"
+    >
+      <div className="flex items-center gap-2">
+        <div className="w-10 h-2.5 rounded bg-[var(--fin-hover)] animate-pulse"/>
+        <div className="w-24 h-2 rounded bg-[var(--fin-hover)] animate-pulse opacity-50"/>
+      </div>
+      <div className="w-12 h-2.5 rounded bg-[var(--fin-hover)] animate-pulse"/>
+    </div>
+  )
+}
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
@@ -192,10 +219,16 @@ export default function DashboardPage() {
               </Link>
             </div>
             {watchlist.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center px-4">
-                <Eye size={16} strokeWidth={1} className="text-[var(--fin-t3)] mb-2"/>
-                <p className="text-xs text-[var(--fin-t3)]">Watchlist vide</p>
-                <Link href="/watchlist" className="mt-2 text-[10px] text-[var(--fin-blue)]">Ajouter →</Link>
+              /* Skeleton immersif : table pré-remplie avec placeholder animé */
+              <div role="status" aria-label="Watchlist vide — chargement en attente">
+                {Array.from({ length: 5 }).map((_, i) => <SkeletonWatchRow key={i}/>)}
+                <div className="flex items-center justify-center py-2">
+                  <Link href="/watchlist"
+                    className="flex items-center gap-1 text-[10px] text-[var(--fin-blue)] hover:opacity-80 font-mono font-bold"
+                    aria-label="Ajouter des titres à la watchlist">
+                    + Ajouter des titres
+                  </Link>
+                </div>
               </div>
             ) : (
               <div>
@@ -247,7 +280,9 @@ export default function DashboardPage() {
                 <div key={col.title}>
                   <p className="px-3 py-1.5 text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest border-b border-[var(--fin-border)] bg-[var(--fin-surface)]">{col.title}</p>
                   {col.data.length === 0 ? (
-                    <p className="text-[10px] text-[var(--fin-t3)] px-3 py-4 font-mono">— Aucune donnée</p>
+                    <div role="status" aria-label="Données en cours de chargement">
+                      {Array.from({length:3}).map((_,i) => <SkeletonEarningsRow key={i}/>)}
+                    </div>
                   ) : col.data.map(e => (
                     <Link key={e.symbol} href={`/stock/${e.symbol}`}
                       className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--fin-border)] last:border-0 hover:bg-[var(--fin-hover)] transition-colors">
@@ -277,22 +312,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Quick nav */}
-          <div className={cn('rounded-lg border border-[var(--fin-border)] overflow-hidden', 'bg-[var(--fin-panel)]')}>
-            <div className={cn('px-3 py-2 border-b border-[var(--fin-border)]', 'bg-[var(--fin-surface)]')}>
-              <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">Navigation</span>
-            </div>
-            <div>
-              {QUICK.map(({ href, Icon, label, key }) => (
-                <Link key={href} href={href}
-                  className="flex items-center gap-3 px-3 py-2.5 border-b border-[var(--fin-border)] last:border-0 hover:bg-[var(--fin-hover)] transition-colors group">
-                  <Icon size={13} strokeWidth={1.5} className="text-[var(--fin-t3)] group-hover:text-[var(--fin-blue)] transition-colors flex-shrink-0"/>
-                  <span className="text-xs text-[var(--fin-t2)] group-hover:text-[var(--fin-t1)] flex-1 transition-colors">{label}</span>
-                  <kbd className="text-[9px] font-mono text-[var(--fin-t3)] bg-[var(--fin-surface)] border border-[var(--fin-border)] px-1 py-0.5 rounded">{key}</kbd>
-                </Link>
-              ))}
-            </div>
-          </div>
+          {/* ✦ Market Pulse — remplace le bloc Navigation doublon */}
+          <MarketPulseWidget/>
         </div>
       </div>
     </div>

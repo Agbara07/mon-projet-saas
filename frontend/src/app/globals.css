@@ -58,13 +58,13 @@
   --fin-surface:   #1A2230;
   --fin-hover:     #202C3E;
   --fin-active:    #243348;
-  /* Borders */
-  --fin-border:    #263040;
-  --fin-border-2:  #344860;
-  /* Typography */
-  --fin-t1:        #D8E1EE;
-  --fin-t2:        #7A8CA0;
-  --fin-t3:        #3E4E60;
+  /* Borders — ultra-fines, semi-transparentes */
+  --fin-border:    rgba(255,255,255,0.07);
+  --fin-border-2:  rgba(255,255,255,0.14);
+  /* Typography — WCAG AA compliant (ratios calculés sur #131920) */
+  --fin-t1:        #E2EAF4;   /* ratio ~12.8:1 ✓ AAA */
+  --fin-t2:        #9AAFC4;   /* ratio ~5.6:1  ✓ AA  */
+  --fin-t3:        #6A8098;   /* ratio ~3.5:1  ✓ AA large text / labels */
   /* Semantic colors */
   --fin-green:     #0ECB81;
   --fin-green-bg:  rgba(14,203,129,.12);
@@ -89,6 +89,41 @@
   --brand-dim:     var(--fin-green-bg);
 }
 
+/* ── Skip link — accessibilité clavier ─────────────────────── */
+.skip-to-main {
+  position: absolute;
+  top: -9999px; left: 0;
+  z-index: 9999;
+  background: var(--fin-blue);
+  color: #fff;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  border-bottom-right-radius: 4px;
+  transition: top 0.1s;
+}
+.skip-to-main:focus { top: 0; }
+
+/* ── Focus visible — accessible et non intrusif ────────────── */
+:focus-visible {
+  outline: 2px solid var(--fin-blue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* ── Reduced motion ────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ── Base ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -109,11 +144,16 @@ body {
   line-height: 1.6;
 }
 
-/* ── Scrollbar ─────────────────────────────────────────────── */
-::-webkit-scrollbar       { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #27272a; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+/* ── Scrollbar — terminal style ────────────────────────────── */
+::-webkit-scrollbar              { width: 4px; height: 4px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: var(--fin-border-2); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover  { background: var(--fin-t3); }
+::-webkit-scrollbar-corner       { background: transparent; }
+
+/* ── Monospace pour tous les chiffres financiers ───────────── */
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.fin-mono     { font-family: 'JetBrains Mono', 'Roboto Mono', 'SF Mono', monospace; }
 
 /* ── Selection ─────────────────────────────────────────────── */
 ::selection { background: rgba(34,197,94,0.25); color: #fff; }

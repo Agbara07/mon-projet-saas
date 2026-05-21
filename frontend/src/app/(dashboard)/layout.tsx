@@ -33,18 +33,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen" style={{ background: 'var(--fin-bg)' }}>
       <NavigationProgress />
       <CommandPalette open={cmd.open} onClose={cmd.close} />
+
+      {/* ── Skip link — accessible keyboard nav ── */}
+      <a href="#main-content" className="skip-to-main">
+        Aller au contenu principal
+      </a>
+
+      {/* Sidebar parfaitement alignée avec la topbar */}
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* Header — densité terminale */}
-        <header className={cn(
-          'flex items-center gap-3 px-4 py-2 flex-shrink-0',
-          'bg-[var(--fin-panel)] border-b border-[var(--fin-border)]',
-        )}>
+        {/* Header — h-9 précis, bordure continue */}
+        <header
+          role="banner"
+          className={cn(
+            'flex items-center gap-3 px-4 h-9 flex-shrink-0',
+            /* Même hauteur que les status bars des pages pour cohérence visuelle */
+            'bg-[var(--fin-panel)] border-b border-[var(--fin-border)]',
+          )}
+        >
 
           {/* Cmd+K trigger */}
-          <button onClick={() => cmd.setOpen(true)}
+          <button
+            onClick={() => cmd.setOpen(true)}
+            aria-label="Ouvrir la palette de commandes (Ctrl+K)"
+            aria-keyshortcuts="Control+k Meta+k"
             className={cn(
               'hidden md:flex items-center gap-2 h-7 px-3 rounded text-[11px]',
               'bg-[var(--fin-surface)] border border-[var(--fin-border)]',
@@ -143,8 +157,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-auto">
+        {/* Page content — main landmark pour accessibilité */}
+        <main id="main-content" role="main" className="flex-1 overflow-auto" tabIndex={-1}>
           {children}
         </main>
       </div>

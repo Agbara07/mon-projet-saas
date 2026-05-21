@@ -11,10 +11,10 @@ interface ProgressProps {
 }
 
 const colorMap = {
-  green: 'bg-green-500',
-  blue:  'bg-blue-500',
-  gold:  'bg-yellow-400',
-  red:   'bg-red-500',
+  green: 'bg-[var(--fin-green)]',
+  blue:  'bg-[var(--fin-blue)]',
+  gold:  'bg-[var(--fin-amber)]',
+  red:   'bg-[var(--fin-red)]',
 }
 
 const sizeMap = {
@@ -28,7 +28,7 @@ export function Progress({ value, max = 100, className, color = 'green', showLab
   return (
     <div className={cn('w-full', className)}>
       <ProgressPrimitive.Root
-        className={cn('relative overflow-hidden rounded-full bg-zinc-800/60', sizeMap[size])}
+        className={cn('relative overflow-hidden rounded-full bg-[var(--fin-surface)]', sizeMap[size])}
         value={pct}
       >
         <ProgressPrimitive.Indicator
@@ -37,7 +37,7 @@ export function Progress({ value, max = 100, className, color = 'green', showLab
         />
       </ProgressPrimitive.Root>
       {showLabel && (
-        <p className="text-xs text-zinc-500 mt-1 text-right">{pct.toFixed(0)}%</p>
+        <p className="text-xs text-[var(--fin-t3)] mt-1 text-right">{pct.toFixed(0)}%</p>
       )}
     </div>
   )

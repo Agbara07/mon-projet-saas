@@ -7,13 +7,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary:   'bg-white text-black hover:bg-gray-100 shadow-lg shadow-white/10',
-        brand:     'bg-brand-500 text-black hover:bg-brand-400 shadow-lg shadow-brand-500/20',
-        gold:      'bg-yellow-400 text-black hover:bg-yellow-300 shadow-lg shadow-yellow-400/20',
-        outline:   'border border-white/10 text-gray-300 hover:text-white hover:border-white/25 hover:bg-white/5',
-        ghost:     'text-gray-400 hover:text-white hover:bg-white/5',
-        danger:    'bg-red-600 text-white hover:bg-red-500',
-        glass:     'glass text-white hover:border-white/15',
+        /* fond contrasté qui fonctionne dans les deux thèmes */
+        primary:   'bg-[var(--fin-t1)] text-[var(--fin-panel)] hover:opacity-90 shadow-sm',
+        brand:     'bg-[var(--fin-green)] text-white hover:opacity-90 shadow-sm shadow-[var(--fin-green-bg)]',
+        gold:      'bg-[var(--fin-amber)] text-white hover:opacity-90 shadow-sm',
+        /* outline + ghost via vars CSS → dark ET light */
+        outline:   'border border-[var(--fin-border-2)] text-[var(--fin-t2)] hover:text-[var(--fin-t1)] hover:border-[var(--fin-blue)] hover:bg-[var(--fin-hover)]',
+        ghost:     'text-[var(--fin-t2)] hover:text-[var(--fin-t1)] hover:bg-[var(--fin-hover)]',
+        danger:    'bg-[var(--fin-red)] text-white hover:opacity-90',
+        glass:     'bg-[var(--fin-panel)]/80 backdrop-blur border border-[var(--fin-border)] text-[var(--fin-t1)] hover:border-[var(--fin-border-2)]',
       },
       size: {
         xs:  'h-7 px-3 text-xs rounded-lg',

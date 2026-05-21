@@ -58,36 +58,36 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       onClick={onClose}
     >
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
       {/* Panel */}
       <div
-        className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
+        className="relative w-full max-w-xl bg-[var(--fin-panel)] rounded-2xl shadow-2xl border border-[var(--fin-border-2)] overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         <Command className="w-full" shouldFilter>
           {/* Input */}
-          <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
-            <Search size={16} className="text-gray-400 flex-shrink-0" />
+          <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--fin-border)]">
+            <Search size={16} className="text-[var(--fin-t3)] flex-shrink-0" />
             <Command.Input
               autoFocus
               value={query}
               onValueChange={setQuery}
               placeholder="Rechercher une page, un titre, une action…"
-              className="flex-1 text-sm text-gray-900 placeholder-gray-400 outline-none bg-transparent"
+              className="flex-1 text-sm text-[var(--fin-t1)] placeholder:text-[var(--fin-t3)] outline-none bg-transparent"
             />
             {query && (
-              <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setQuery('')} className="text-[var(--fin-t3)] hover:text-[var(--fin-t1)] transition-colors">
                 <X size={14} />
               </button>
             )}
-            <kbd className="hidden sm:flex items-center gap-1 px-2 py-0.5 text-xs text-gray-400 bg-gray-100 rounded font-mono">
+            <kbd className="hidden sm:flex items-center gap-1 px-2 py-0.5 text-xs text-[var(--fin-t3)] bg-[var(--fin-surface)] rounded font-mono border border-[var(--fin-border)]">
               ESC
             </kbd>
           </div>
 
           <Command.List className="max-h-[400px] overflow-y-auto py-2">
-            <Command.Empty className="py-10 text-center text-sm text-gray-400">
+            <Command.Empty className="py-10 text-center text-sm text-[var(--fin-t3)]">
               Aucun résultat pour « {query} »
             </Command.Empty>
 
@@ -99,13 +99,13 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                     key={href}
                     value={label}
                     onSelect={() => navigate(href)}
-                    className="flex items-center gap-3 px-4 py-2.5 cursor-pointer text-sm text-gray-700
-                               hover:bg-blue-50 hover:text-blue-700 rounded-xl mx-2 transition-colors
-                               data-[selected=true]:bg-blue-50 data-[selected=true]:text-blue-700"
+                    className="flex items-center gap-3 px-4 py-2.5 cursor-pointer text-sm text-[var(--fin-t2)]
+                               hover:bg-[var(--fin-hover)] hover:text-[var(--fin-t1)] rounded-xl mx-2 transition-colors
+                               data-[selected=true]:bg-[var(--fin-active)] data-[selected=true]:text-[var(--fin-t1)]"
                   >
-                    <Icon size={15} className="flex-shrink-0 text-gray-400" />
+                    <Icon size={15} className="flex-shrink-0 text-[var(--fin-t3)]" />
                     <span className="flex-1">{label}</span>
-                    <ArrowRight size={13} className="text-gray-300" />
+                    <ArrowRight size={13} className="text-[var(--fin-t3)]" />
                   </Command.Item>
                 ))}
               </Command.Group>
@@ -119,13 +119,13 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                     key={href}
                     value={`${label} ${href}`}
                     onSelect={() => navigate(href)}
-                    className="flex items-center gap-3 px-4 py-2.5 cursor-pointer text-sm text-gray-700
-                               hover:bg-blue-50 hover:text-blue-700 rounded-xl mx-2 transition-colors
-                               data-[selected=true]:bg-blue-50 data-[selected=true]:text-blue-700"
+                    className="flex items-center gap-3 px-4 py-2.5 cursor-pointer text-sm text-[var(--fin-t2)]
+                               hover:bg-[var(--fin-hover)] hover:text-[var(--fin-t1)] rounded-xl mx-2 transition-colors
+                               data-[selected=true]:bg-[var(--fin-active)] data-[selected=true]:text-[var(--fin-t1)]"
                   >
-                    <Icon size={15} className="flex-shrink-0 text-gray-400" />
+                    <Icon size={15} className="flex-shrink-0 text-[var(--fin-t3)]" />
                     <span className="flex-1">{label}</span>
-                    <ArrowRight size={13} className="text-gray-300" />
+                    <ArrowRight size={13} className="text-[var(--fin-t3)]" />
                   </Command.Item>
                 ))}
               </Command.Group>
@@ -133,10 +133,10 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           </Command.List>
 
           {/* Footer */}
-          <div className="flex items-center gap-4 px-4 py-2.5 border-t border-gray-100 text-xs text-gray-400">
-            <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 bg-gray-100 rounded font-mono">↑↓</kbd> naviguer</span>
-            <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 bg-gray-100 rounded font-mono">↵</kbd> ouvrir</span>
-            <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 bg-gray-100 rounded font-mono">ESC</kbd> fermer</span>
+          <div className="flex items-center gap-4 px-4 py-2.5 border-t border-[var(--fin-border)] text-xs text-[var(--fin-t3)]">
+            <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 bg-[var(--fin-surface)] border border-[var(--fin-border)] rounded font-mono">↑↓</kbd> naviguer</span>
+            <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 bg-[var(--fin-surface)] border border-[var(--fin-border)] rounded font-mono">↵</kbd> ouvrir</span>
+            <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 bg-[var(--fin-surface)] border border-[var(--fin-border)] rounded font-mono">ESC</kbd> fermer</span>
           </div>
         </Command>
       </div>

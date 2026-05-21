@@ -16,9 +16,9 @@ export function Stat({ label, value, change, prefix, suffix, className, size = '
 
   return (
     <div className={cn('flex flex-col', className)}>
-      <p className={cn('text-zinc-500 font-medium', size === 'sm' ? 'text-xs' : 'text-xs mb-1')}>{label}</p>
+      <p className={cn('text-[var(--fin-t3)] font-medium', size === 'sm' ? 'text-xs' : 'text-xs mb-1')}>{label}</p>
       <p className={cn(
-        'font-bold text-white tabular-nums',
+        'font-bold text-[var(--fin-t1)] tabular-nums',
         size === 'sm' ? 'text-lg' : size === 'lg' ? 'text-3xl' : 'text-xl'
       )}>
         {prefix}{typeof value === 'number' ? value.toLocaleString('fr-FR') : value}{suffix}
@@ -26,7 +26,7 @@ export function Stat({ label, value, change, prefix, suffix, className, size = '
       {trend && change !== undefined && (
         <div className={cn(
           'flex items-center gap-1 mt-1 text-xs font-semibold',
-          trend === 'up' ? 'text-green-400' : trend === 'down' ? 'text-red-400' : 'text-zinc-500'
+          trend === 'up' ? 'text-[var(--fin-green)]' : trend === 'down' ? 'text-[var(--fin-red)]' : 'text-[var(--fin-t3)]'
         )}>
           {trend === 'up' ? <TrendingUp size={12}/> : trend === 'down' ? <TrendingDown size={12}/> : <Minus size={12}/>}
           {change > 0 ? '+' : ''}{change.toFixed(2)}%

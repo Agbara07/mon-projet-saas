@@ -6,13 +6,13 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        green:  'bg-green-500/10  border-green-500/20  text-green-400',
-        blue:   'bg-blue-500/10   border-blue-500/20   text-blue-400',
-        gold:   'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
-        purple: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
-        red:    'bg-red-500/10    border-red-500/20    text-red-400',
-        white:  'bg-white/5       border-white/10      text-gray-300',
-        outline:'border-white/10  bg-transparent       text-gray-400',
+        green:  'bg-[var(--fin-green-bg)]  border-[var(--fin-green)]  text-[var(--fin-green)]',
+        blue:   'bg-[var(--fin-blue-bg)]   border-[var(--fin-blue)]   text-[var(--fin-blue)]',
+        gold:   'bg-[var(--fin-amber-bg)]  border-[var(--fin-amber)]  text-[var(--fin-amber)]',
+        purple: 'bg-purple-500/10          border-purple-500/30       text-purple-600 dark:text-purple-400',
+        red:    'bg-[var(--fin-red-bg)]    border-[var(--fin-red)]    text-[var(--fin-red)]',
+        white:  'bg-[var(--fin-surface)]   border-[var(--fin-border-2)] text-[var(--fin-t2)]',
+        outline:'border-[var(--fin-border-2)] bg-transparent           text-[var(--fin-t3)]',
       },
       size: {
         sm: 'text-xs px-2 py-0.5 rounded-md',

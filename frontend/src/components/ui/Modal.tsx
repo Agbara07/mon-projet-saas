@@ -29,21 +29,33 @@ export function Modal({ open, onClose, title, description, children, className, 
         <Dialog.Content
           className={cn(
             'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50',
-            'w-full mx-4 rounded-2xl',
-            'bg-[#0f0f0f] border border-white/[0.08] shadow-2xl',
+            'w-full mx-4 rounded-xl',
+            /* fond + bordure via vars → dark ET light automatique */
+            'bg-[var(--fin-panel)] border border-[var(--fin-border-2)]',
+            'shadow-[0_24px_80px_rgba(0,0,0,0.4)]',
             'animate-scale-in',
             sizeMap[size],
             className
           )}
         >
           {(title || description) && (
-            <div className="flex items-start justify-between p-6 border-b border-white/[0.06]">
+            <div className="flex items-start justify-between p-5 border-b border-[var(--fin-border)]">
               <div>
-                {title && <Dialog.Title className="font-bold text-white text-lg">{title}</Dialog.Title>}
-                {description && <Dialog.Description className="text-zinc-400 text-sm mt-1">{description}</Dialog.Description>}
+                {title && (
+                  <Dialog.Title className="font-bold text-[var(--fin-t1)] text-base">
+                    {title}
+                  </Dialog.Title>
+                )}
+                {description && (
+                  <Dialog.Description className="text-[var(--fin-t2)] text-sm mt-1">
+                    {description}
+                  </Dialog.Description>
+                )}
               </div>
-              <button onClick={onClose} className="text-zinc-600 hover:text-white transition-colors ml-4 mt-0.5">
-                <X size={18}/>
+              <button
+                onClick={onClose}
+                className="text-[var(--fin-t3)] hover:text-[var(--fin-t1)] transition-colors ml-4 mt-0.5">
+                <X size={16}/>
               </button>
             </div>
           )}

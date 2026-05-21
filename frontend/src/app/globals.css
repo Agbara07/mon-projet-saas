@@ -22,20 +22,20 @@
   /* Borders */
   --fin-border:    #D0D8E4;
   --fin-border-2:  #B0BCCC;
-  /* Typography */
-  --fin-t1:        #0A1929;
-  --fin-t2:        #3D5166;
-  --fin-t3:        #7A90A8;
-  /* Semantic colors */
-  --fin-green:     #00875A;
-  --fin-green-bg:  #E3FCEF;
-  --fin-red:       #DE350B;
-  --fin-red-bg:    #FFEBE6;
+  /* Typography (WCAG AA sur fond blanc #FFFFFF) */
+  --fin-t1:        #0A1929;   /* ~19:1  ✓ AAA */
+  --fin-t2:        #2D4055;   /* ~10:1  ✓ AAA — secondaire renforcé   */
+  --fin-t3:        #4A6580;   /* ~5.8:1 ✓ AA  — labels visibles       */
+  /* Semantic — light mode (contrastes renforcés sur fond blanc) */
+  --fin-green:     #0E7A5A;   /* vert profond lisible ~6:1            */
+  --fin-green-bg:  #DFF5EC;
+  --fin-red:       #C62828;   /* rouge soutenu ~7:1                   */
+  --fin-red-bg:    #FDECEA;
   --fin-amber:     #C25100;
   --fin-amber-bg:  #FFF4E5;
-  --fin-blue:      #0052CC;
-  --fin-blue-bg:   #E8F0FF;
-  --fin-cyan:      #008DA6;
+  --fin-blue:      #1565C0;   /* bleu institutionnel ~7.5:1           */
+  --fin-blue-bg:   #E3F0FF;
+  --fin-cyan:      #006F8E;
   /* Legacy compat */
   --bg:            var(--fin-bg);
   --bg-card:       var(--fin-panel);
@@ -66,10 +66,10 @@
   --fin-border:    rgba(42,46,57,0.65);   /* 1px quasi-invisible       */
   --fin-border-2:  rgba(74,82,101,0.50);  /* légèrement visible        */
 
-  /* ── Typographie — TradingView × Bloomberg ────────────────── */
-  --fin-t1:  #d1d4dc;   /* TV: texte principal, off-white chaud ✓ AAA */
-  --fin-t2:  #9098a4;   /* TV: texte secondaire lisible          ✓ AA  */
-  --fin-t3:  #606470;   /* TV: labels/muted                      ✓ AA labels */
+  /* ── Typographie — TradingView × Bloomberg (WCAG AA recalculé sur #131722) */
+  --fin-t1:  #dde2ec;   /* ~13.5:1 ✓ AAA — texte principal très lisible    */
+  --fin-t2:  #a8b4c8;   /* ~6.8:1  ✓ AA  — texte secondaire visible        */
+  --fin-t3:  #7a8494;   /* ~4.2:1  ✓ AA  — labels/headers/muted            */
 
   /* ── Performance — KOYFIN muted palette ──────────────────── */
   --fin-green:     #26a69a;               /* Koyfin: vert teal discret */

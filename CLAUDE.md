@@ -4,21 +4,33 @@ Plateforme SaaS d'investissement boursier couvrant les marchés mondiaux (US, Eu
 
 ## Stack
 
-| Couche       | Technologie                                                  |
-|--------------|--------------------------------------------------------------|
-| Frontend     | Next.js 14 (App Router), TypeScript, Tailwind CSS            |
-| Backend      | Node.js + Express, TypeScript                                |
+| Couche          | Technologie                                               |
+|-----------------|-----------------------------------------------------------|
+| Frontend        | Next.js 14 (App Router), TypeScript, Tailwind CSS         |
+| Backend         | Node.js + Express, TypeScript                             |
 | Base de données | PostgreSQL + Prisma ORM                                   |
-| Auth         | JWT (access 15min + refresh 7j), bcryptjs                    |
-| Temps réel   | WebSocket (ws), alertes via node-cron                        |
-| Charts       | Recharts (dashboard), lightweight-charts v5 (TradingView)    |
-| Deploy       | Vercel (frontend), Railway (backend + PostgreSQL)            |
+| Auth            | JWT (access 15min + refresh 7j), bcryptjs                 |
+| Temps réel      | WebSocket (ws), alertes via node-cron                     |
+| Charts          | Recharts (dashboard), lightweight-charts v5 (TradingView) |
+| Deploy          | Vercel (frontend), Railway (backend + PostgreSQL)         |
 
 ## Structure du projet
 
 ```
 mon-projet-saas/
-├── frontend/           # Next.js 14 (App Router)
+├── .claude/
+│   └── commands/              # Skills Claude Code projet (8 commandes slash)
+│       ├── audit-securite.md
+│       ├── analyse-architecture-360.md
+│       ├── clarifier-besoin.md
+│       ├── deployer-prod.md
+│       ├── planifier-architecture.md
+│       ├── tester-et-deboguer.md
+│       ├── verifier-sante.md
+│       └── concepteur-ui-ux.md
+│
+├── frontend/                  # Next.js 14 (App Router)
+│   ├── .env.local             # Variables locales (gitignored)
 │   └── src/
 │       ├── app/(dashboard)/   # Pages protégées (layout avec sidebar)
 │       │   ├── dashboard/
@@ -45,9 +57,10 @@ mon-projet-saas/
 │       │   ├── circuit-breaker.ts    # Ouverture sur 5 erreurs, récup 2min
 │       │   ├── types.ts              # IMarketProvider, Quote, etc.
 │       │   └── providers/            # 12 providers (voir tableau ci-dessous)
+│       ├── services/alert.service.ts       # Engine d'alertes WebSocket (node-cron)
+│       ├── services/brvm-cron.service.ts   # Cron BRVM (node-cron, 15min séance / 1h hors séance)
 │       ├── controllers/market.controller.ts
-│       ├── routes/market.routes.ts
-│       └── services/alert.service.ts # Engine d'alertes WebSocket
+│       └── routes/market.routes.ts
 │
 ├── backend/prisma/schema.prisma
 ├── .env                       # Clés API (ne pas committer les vraies clés)
@@ -55,22 +68,37 @@ mon-projet-saas/
 └── railway.json               # Config Railway (startCommand avec migrate)
 ```
 
+## Skills Claude Code (`.claude/commands/`)
+
+Commandes slash disponibles dans ce projet — invoquer avec `/nom` dans Claude Code :
+
+| Commande                    | Rôle                                                        |
+|-----------------------------|-------------------------------------------------------------|
+| `/audit-securite`           | Audit sécurité (OWASP, secrets, injections, auth)           |
+| `/analyse-architecture-360` | Audit architectural complet + score de santé                |
+| `/clarifier-besoin`         | Clarifie les ambiguïtés avant de coder                      |
+| `/deployer-prod`            | Checklist + déploiement sécurisé (Vercel + Railway)         |
+| `/planifier-architecture`   | Plan d'implémentation avant d'écrire le code                |
+| `/tester-et-deboguer`       | Debugging, cause racine, test de non-régression             |
+| `/verifier-sante`           | Vérifie que l'environnement local est 100% opérationnel     |
+| `/concepteur-ui-ux`         | Interfaces modernes, accessibles, performantes (Tailwind)   |
+
 ## Providers de données de marché (12 au total)
 
-| # | Nom            | Priorité | Spécialité                           | Clé env               |
-|---|----------------|----------|--------------------------------------|-----------------------|
-| 1 | Finnhub        | 1        | Quotes, news, profils — 60 req/min   | `FINNHUB_API_KEY`     |
-| 2 | Twelve Data    | 2        | Historique, indicateurs techniques   | `TWELVE_DATA_API_KEY` |
-| 3 | Polygon        | 3        | US equities, options                 | `POLYGON_API_KEY`     |
-| 4 | EODHD          | 4        | EOD global, actions de sociétés      | `EODHD_API_KEY`       |
-| 5 | Alpha Vantage  | 5        | 25 req/jour — dernier recours        | `ALPHA_VANTAGE_API_KEY` |
-| 6 | Marketstack    | 6        | Historique global                    | `MARKETSTACK_API_KEY` |
-| 7 | MarketData.app | 7        | Stocks/options US                    | `MARKETDATA_API_KEY`  |
-| 8 | IEX Cloud      | 8        | Référence équités US, batch quotes   | `IEX_CLOUD_API_KEY`   |
-| 9 | Benzinga       | 9        | Spécialiste news + analyst ratings   | `BENZINGA_API_KEY`    |
-|10 | TMX Group      | 10       | Bourse TSX (Canada), événements      | `TMX_API_KEY`         |
-|11 | ETF Global     | 11       | ETF holdings, secteurs, performance  | `ETF_GLOBAL_API_KEY`  |
-|12 | BRVM           | 12       | Marché UEMOA (Afrique de l'Ouest)    | aucune (données pub.) |
+| #  | Nom            | Priorité | Spécialité                           | Clé env                  |
+|----|----------------|----------|--------------------------------------|--------------------------|
+| 1  | Finnhub        | 1        | Quotes, news, profils — 60 req/min   | `FINNHUB_API_KEY`        |
+| 2  | Twelve Data    | 2        | Historique, indicateurs techniques   | `TWELVE_DATA_API_KEY`    |
+| 3  | Polygon        | 3        | US equities, options                 | `POLYGON_API_KEY`        |
+| 4  | EODHD          | 4        | EOD global, actions de sociétés      | `EODHD_API_KEY`          |
+| 5  | Alpha Vantage  | 5        | 25 req/jour — dernier recours        | `ALPHA_VANTAGE_API_KEY`  |
+| 6  | Marketstack    | 6        | Historique global                    | `MARKETSTACK_API_KEY`    |
+| 7  | MarketData.app | 7        | Stocks/options US                    | `MARKETDATA_API_KEY`     |
+| 8  | IEX Cloud      | 8        | Référence équités US, batch quotes   | `IEX_CLOUD_API_KEY`      |
+| 9  | Benzinga       | 9        | Spécialiste news + analyst ratings   | `BENZINGA_API_KEY`       |
+| 10 | TMX Group      | 10       | Bourse TSX (Canada), événements      | `TMX_API_KEY`            |
+| 11 | ETF Global     | 11       | ETF holdings, secteurs, performance  | `ETF_GLOBAL_API_KEY`     |
+| 12 | BRVM           | 12       | Marché UEMOA (Afrique de l'Ouest)    | aucune (données pub.)    |
 
 **Routing par type de donnée** (défini dans `market-router.ts`) :
 - `quote` → finnhub, twelvedata, polygon, iex, eodhd, alphavantage, marketstack, marketdata
@@ -135,13 +163,20 @@ GET /:symbol/tsx               → cotation TSX en CAD
 
 ## Bugs et workarounds connus
 
-### Yahoo Finance (abandonné)
-Le package `yahoo-finance2` est cassé en production (Railway) à cause d'un redirect Yahoo (`/quote/AAPL` → `/quote/AAPL/`).
-**Solution** : fetch direct sur l'API v8 sans authentification :
+### Yahoo Finance (supprimé — 21/05/2026)
+Le package `yahoo-finance2` a été **désinstallé** (`npm uninstall yahoo-finance2`, 20 packages retirés).
+Était cassé en production (Railway) à cause d'un redirect Yahoo (`/quote/AAPL` → `/quote/AAPL/`).
+Ne pas réinstaller — utiliser les 12 providers à la place.
+En dev, fetch direct sur l'API v8 si besoin ponctuel :
 ```
 https://query1.finance.yahoo.com/v8/finance/chart/{SYMBOL}?interval=1d&range=1mo
 ```
-Ne pas réinstaller `yahoo-finance2` — utiliser les 12 providers à la place.
+
+### node-cron — migration 3.x → 4.x (✅ CORRIGÉ le 21/05/2026)
+`node-cron@4.2.1` installé — CVE GHSA-w5hq-g745-h8pq corrigée, `0 vulnerabilities`.
+- `@types/node-cron` supprimé (types bundlés en v4)
+- API compatible : `import cron from 'node-cron'` + `cron.schedule()` inchangés
+- Node.js v22 en local ✅ — vérifier Railway si redéploiement nécessaire
 
 ### Railway — buildCommand
 Ne jamais définir un `buildCommand` custom dans `railway.json` ou via l'API Railway.
@@ -154,7 +189,7 @@ Railway utilise `rootDirectory: backend` configuré dans le service — le CLI d
 
 ### Portfolio — chargement
 `loadPortfolio` et `loadHistory` sont deux fonctions async séparées dans `portfolio/page.tsx`.
-`loadHistory` a son propre try/catch pour ne pas bloquer le portfolio si Yahoo Finance timeout.
+`loadHistory` a son propre try/catch pour ne pas bloquer le portfolio en cas d'erreur réseau.
 
 ## Déploiement
 
@@ -167,16 +202,21 @@ Railway utilise `rootDirectory: backend` configuré dans le service — le CLI d
 ### Vercel (frontend)
 - Push sur `master` → Vercel auto-deploy
 - Root directory : `frontend/`
-- Variables d'env : `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL`
+- Variables d'env locales : `frontend/.env.local` (créé le 21/05/2026, dans `.gitignore`)
+- Variables d'env production à configurer dans le dashboard Vercel :
+  `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 
 ## Base de données locale
 
 ```bash
-docker-compose up -d          # PostgreSQL sur port 5434
+docker-compose up -d          # PostgreSQL sur port 5434 (credentials: user/password)
 cd backend
 npx prisma migrate dev        # créer/appliquer migrations
 npx prisma studio             # interface graphique
 ```
+
+> `DATABASE_URL="postgresql://user:password@localhost:5434/mon_saas_db"` — les credentials
+> `user`/`password` sont intentionnels, définis dans `docker-compose.yml`.
 
 ## Lancer en dev
 
@@ -193,3 +233,25 @@ cd frontend && npm run dev     # port 3000
 `Organization` → `User` → `Portfolio` → `Holding` / `Transaction`
 `User` → `Alert` / `WatchlistItem` / `StockNote`
 `Organization` → `Subscription`
+
+## Journal de session
+
+<!-- Les entrées ci-dessous sont ajoutées automatiquement par Claude avant chaque compression de contexte -->
+
+### Session du 21/05/2026 — 19:30
+- Installé 8 skills dans `.claude/commands/` (`audit-securite`, `deployer-prod`, `verifier-sante`, etc.)
+- Lancé `/verifier-sante` : builds ✅, TypeScript ✅, Prisma ✅, node_modules ✅
+- Supprimé `yahoo-finance2` — 20 packages retirés (`npm uninstall yahoo-finance2`)
+- Créé `frontend/.env.local` avec `NEXT_PUBLIC_API_URL` et `NEXT_PUBLIC_WS_URL`
+- Mis à jour `frontend/.gitignore` — ajout de `.env.local`
+- Documenté vulnérabilité `node-cron@3.0.3` → uuid CVE (GHSA-w5hq-g745-h8pq)
+- Produit plan de migration `node-cron` 3.x → 4.x avec cartographie des fichiers impactés
+- Configuré `PreCompact` hook dans `.claude/settings.json` pour auto-journal de session
+- Mis à jour `CLAUDE.md` : structure complète, skills, workarounds, journal de session
+
+## Travaux en cours / À faire
+
+| Priorité | Tâche | Détail |
+|----------|-------|--------|
+| ✅ Fait | Migrer `node-cron` 3.x → 4.x | CVE GHSA-w5hq-g745-h8pq — corrigée le 21/05/2026 |
+| ⚪ Optionnel | Ajouter clés API providers | `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, etc. dans `.env` |

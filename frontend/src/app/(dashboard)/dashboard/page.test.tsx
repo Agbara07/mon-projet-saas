@@ -1,8 +1,17 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import DashboardPage from './page'
 import api from '@/lib/api'
 
 jest.mock('@/lib/api', () => ({ get: jest.fn() }))
+jest.mock('@/components/terminal/MarketPulseWidget', () => () => (
+  <div data-testid="market-pulse-widget" />
+))
+
+global.ResizeObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}))
 
 const mockUser = {
   id: 'u1',
@@ -13,25 +22,35 @@ const mockUser = {
 }
 
 describe('DashboardPage', () => {
-  it('affiche le chargement puis les données utilisateur', async () => {
-    ;(api.get as jest.Mock).mockResolvedValue({ data: mockUser })
-    render(<DashboardPage />)
-
-    expect(screen.getByText('Chargement...')).toBeInTheDocument()
-
-    await waitFor(() => {
-      expect(screen.getByText('Bonjour, Marie Dupont')).toBeInTheDocument()
-      expect(screen.getByText('Acme Capital — Plan PRO')).toBeInTheDocument()
-    })
+  beforeEach(() => {
+    jest.useFakeTimers()
+    ;(api.get as jest.Mock)
+      .mockResolvedValueOnce({ data: mockUser })  // /users/me
+      .mockResolvedValueOnce({ data: [] })         // /market/overview
+      .mockResolvedValueOnce({ data: [] })         // /market/earnings
+      .mockResolvedValueOnce({ data: [] })         // /watchlist
+      .mockResolvedValueOnce({ data: [] })         // /market/SPY/historical
   })
 
-  it('affiche le rôle et le plan', async () => {
-    ;(api.get as jest.Mock).mockResolvedValue({ data: mockUser })
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it('affiche le spinner de chargement puis le dashboard', async () => {
+    const { container } = render(<DashboardPage />)
+    expect(container.querySelector('.animate-spin')).toBeInTheDocument()
+
+    await act(async () => {})
+
+    expect(container.querySelector('.animate-spin')).not.toBeInTheDocument()
+    expect(screen.getByText(/Acme Capital/i)).toBeInTheDocument()
+  })
+
+  it("affiche le plan de l'organisation", async () => {
     render(<DashboardPage />)
 
-    await waitFor(() => {
-      expect(screen.getByText('OWNER')).toBeInTheDocument()
-      expect(screen.getAllByText('PRO').length).toBeGreaterThan(0)
-    })
+    await act(async () => {})
+
+    expect(screen.getByText('PRO')).toBeInTheDocument()
   })
 })

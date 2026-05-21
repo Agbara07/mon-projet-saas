@@ -146,10 +146,11 @@ export default function LoginPage() {
 
             {/* Email */}
             <div>
-              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Email</label>
+              <label htmlFor="email" className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Email</label>
               <div className="relative">
                 <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"/>
                 <input
+                  id="email"
                   {...register('email')}
                   type="email"
                   placeholder="vous@exemple.com"
@@ -174,12 +175,13 @@ export default function LoginPage() {
             {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">Mot de passe</label>
+                <label htmlFor="password" className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">Mot de passe</label>
                 <Link href="#" className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">Mot de passe oublié ?</Link>
               </div>
               <div className="relative">
                 <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"/>
                 <input
+                  id="password"
                   {...register('password')}
                   type={showPw ? 'text' : 'password'}
                   placeholder="••••••••"

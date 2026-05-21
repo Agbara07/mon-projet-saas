@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Avant que le contexte soit compressé, mets à jour la section '## Journal de session' dans le fichier CLAUDE.md à la racine du projet. Insère une nouvelle entrée horodatée (format: '### Session du JJ/MM/AAAA — HH:MM') qui résume en bullet points concis les actions effectuées durant cette session : fichiers créés ou modifiés, commandes exécutées, bugs corrigés, décisions techniques prises. Ne supprime pas les entrées existantes, ajoute la nouvelle juste après le commentaire HTML. Maximum 10 bullet points.",
+            "statusMessage": "Sauvegarde de la session dans CLAUDE.md..."
+          }
+        ]
+      }
+    ]
+  }
+}

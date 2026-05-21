@@ -95,9 +95,13 @@ function CreatePanel({ onCreated, onCancel }: { onCreated: () => void; onCancel:
 
   const submit = async () => {
     if (!form.symbol || !form.threshold) return
-    await api.post('/alerts', { ...form, threshold: Number(form.threshold) })
-    toast.success(`Alerte ${form.symbol} créée`)
-    onCreated()
+    try {
+      await api.post('/alerts', { ...form, threshold: Number(form.threshold) })
+      toast.success(`Alerte ${form.symbol} créée`)
+      onCreated()
+    } catch {
+      toast.error('Impossible de créer l\'alerte — backend inaccessible')
+    }
   }
 
   const sel = (cls: string) => cn(

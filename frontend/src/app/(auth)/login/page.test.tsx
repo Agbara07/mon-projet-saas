@@ -8,7 +8,7 @@ jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }))
 describe('LoginPage', () => {
   it('affiche le formulaire de connexion', () => {
     render(<LoginPage />)
-    expect(screen.getByText('Connexion')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /content de vous revoir/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/mot de passe/i)).toBeInTheDocument()
   })
@@ -17,11 +17,11 @@ describe('LoginPage', () => {
     render(<LoginPage />)
     fireEvent.click(screen.getByRole('button', { name: /se connecter/i }))
     await waitFor(() => {
-      expect(screen.getByText(/invalid email/i)).toBeInTheDocument()
+      expect(screen.getByText('Email invalide')).toBeInTheDocument()
     })
   })
 
-  it('appelle l\'API avec les bonnes données', async () => {
+  it("appelle l'API avec les bonnes données", async () => {
     ;(api.post as jest.Mock).mockResolvedValue({
       data: { accessToken: 'token', refreshToken: 'refresh', user: {} },
     })

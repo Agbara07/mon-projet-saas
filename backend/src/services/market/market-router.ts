@@ -13,6 +13,10 @@ import { AlphaVantageProvider } from './providers/alpha-vantage.provider'
 import { EODHDProvider }        from './providers/eodhd.provider'
 import { MarketstackProvider }  from './providers/marketstack.provider'
 import { MarketDataProvider }   from './providers/marketdata.provider'
+import { IEXProvider }          from './providers/iex.provider'
+import { BenzingaProvider }     from './providers/benzinga.provider'
+import { TMXProvider }          from './providers/tmx.provider'
+import { ETFGlobalProvider }    from './providers/etf-global.provider'
 
 /* ── Providers disponibles (priorité croissante) ────────── */
 const ALL_PROVIDERS: IMarketProvider[] = [
@@ -23,18 +27,27 @@ const ALL_PROVIDERS: IMarketProvider[] = [
   new AlphaVantageProvider(),
   new MarketstackProvider(),
   new MarketDataProvider(),
+  new IEXProvider(),
+  new BenzingaProvider(),
+  new TMXProvider(),
+  new ETFGlobalProvider(),
 ].sort((a, b) => a.priority - b.priority)
 
-/* ── Routing par type de donnée ─────────────────────────── */
+// Providers spécialisés (accès direct sans routing générique)
+export const benzingaProvider  = new BenzingaProvider()
+export const tmxProvider       = new TMXProvider()
+export const etfGlobalProvider = new ETFGlobalProvider()
+
+/* ── Routing par type de donnée (11 providers) ──────────── */
 const ROUTING = {
-  quote:       ['finnhub', 'twelvedata', 'polygon', 'eodhd', 'alphavantage', 'marketstack', 'marketdata'],
-  historical:  ['twelvedata', 'polygon', 'eodhd', 'alphavantage', 'marketstack', 'finnhub'],
-  profile:     ['finnhub', 'eodhd', 'alphavantage', 'polygon', 'twelvedata'],
-  news:        ['polygon', 'finnhub', 'alphavantage', 'eodhd'],
-  earnings:    ['finnhub', 'eodhd'],
-  search:      ['finnhub', 'twelvedata', 'polygon', 'alphavantage', 'eodhd'],
-  overview:    ['finnhub', 'twelvedata', 'polygon'],
-  technical:   ['twelvedata'],  // seul provider avec indicateurs natifs
+  quote:      ['finnhub','twelvedata','polygon','iex','eodhd','alphavantage','marketstack','marketdata'],
+  historical: ['twelvedata','polygon','iex','eodhd','alphavantage','marketstack','finnhub'],
+  profile:    ['finnhub','iex','eodhd','alphavantage','polygon','twelvedata'],
+  news:       ['benzinga','polygon','finnhub','iex','alphavantage','eodhd'],  // Benzinga prioritaire pour news
+  earnings:   ['benzinga','finnhub','tmx','eodhd'],                           // Benzinga + TMX pour events
+  search:     ['finnhub','twelvedata','polygon','iex','alphavantage','eodhd'],
+  overview:   ['finnhub','twelvedata','polygon','iex'],
+  technical:  ['twelvedata'],  // seul avec indicateurs natifs gratuits
 }
 
 function getProvidersByType(type: keyof typeof ROUTING): IMarketProvider[] {

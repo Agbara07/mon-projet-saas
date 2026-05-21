@@ -127,13 +127,7 @@ export const brvmRefresh = async (req: Request, res: Response) => {
   const received = ((req.headers['x-cron-secret'] as string) ?? '').trim()
   const expected = (process.env.CRON_SECRET ?? '').trim()
   if (!expected || received !== expected) {
-    // Debug sans exposer les valeurs
-    return res.status(401).json({
-      message:       'CRON_SECRET invalide ou manquant',
-      receivedLen:   received.length,
-      expectedLen:   expected.length,
-      envVarPresent: !!process.env.CRON_SECRET,
-    })
+    return res.status(401).json({ message: 'CRON_SECRET invalide ou manquant' })
   }
   try {
     const result = await refreshBRVMData()

@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 2
 
     steps:
+      # GitHub secret BRVM_CRON_SECRET doit valoir : BrvmCron2026InvestSaas
       - name: Trigger BRVM data refresh
         env:
           RAILWAY_URL: https://backend-production-541b.up.railway.app

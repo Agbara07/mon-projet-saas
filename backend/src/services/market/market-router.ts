@@ -17,6 +17,7 @@ import { IEXProvider }          from './providers/iex.provider'
 import { BenzingaProvider }     from './providers/benzinga.provider'
 import { TMXProvider }          from './providers/tmx.provider'
 import { ETFGlobalProvider }    from './providers/etf-global.provider'
+import { BRVMProvider }         from './providers/brvm.provider'
 
 /* ── Providers disponibles (priorité croissante) ────────── */
 const ALL_PROVIDERS: IMarketProvider[] = [
@@ -31,12 +32,14 @@ const ALL_PROVIDERS: IMarketProvider[] = [
   new BenzingaProvider(),
   new TMXProvider(),
   new ETFGlobalProvider(),
+  new BRVMProvider(),
 ].sort((a, b) => a.priority - b.priority)
 
 // Providers spécialisés (accès direct sans routing générique)
 export const benzingaProvider  = new BenzingaProvider()
 export const tmxProvider       = new TMXProvider()
 export const etfGlobalProvider = new ETFGlobalProvider()
+export const brvmProvider      = new BRVMProvider()
 
 /* ── Routing par type de donnée (11 providers) ──────────── */
 const ROUTING = {

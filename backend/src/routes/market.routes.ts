@@ -4,6 +4,8 @@ import {
   earningsCalendar, marketOverview, technicalIndicators, providersStatus,
   analystRatings, corporateEvents, tsxQuote,
   etfDetails, etfHoldings, etfSectors, etfPerformance, etfByCategory,
+  brvmQuotes, brvmQuote, brvmHistorical, brvmIndices,
+  brvmSectors, brvmCountries, brvmMarket, brvmCompanies,
 } from '../controllers/market.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 
@@ -23,6 +25,16 @@ router.get('/etf/:symbol',           etfDetails)
 router.get('/etf/:symbol/holdings',  etfHoldings)
 router.get('/etf/:symbol/sectors',   etfSectors)
 router.get('/etf/:symbol/performance', etfPerformance)
+
+// ── BRVM — Bourse Régionale des Valeurs Mobilières ────────
+router.get('/brvm',                     brvmQuotes)
+router.get('/brvm/indices',             brvmIndices)
+router.get('/brvm/sectors',             brvmSectors)
+router.get('/brvm/countries',           brvmCountries)
+router.get('/brvm/market',              brvmMarket)
+router.get('/brvm/companies',           brvmCompanies)
+router.get('/brvm/:symbol/quote',       brvmQuote)
+router.get('/brvm/:symbol/historical',  brvmHistorical)
 
 // ── Par symbole ────────────────────────────────────────────
 router.get('/:symbol/quote',         quote)

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { marketRouter, benzingaProvider, tmxProvider, etfGlobalProvider } from '../services/market/market-router'
+import { marketRouter, benzingaProvider, tmxProvider, etfGlobalProvider, brvmProvider } from '../services/market/market-router'
 import { ScreenerFilters } from '../services/market/types'
 
 const handle = (fn: (req: Request, res: Response) => Promise<any>) =>
@@ -109,4 +109,47 @@ export const etfPerformance = handle(async (req, res) => {
 export const etfByCategory = handle(async (req, res) => {
   const category = req.query.category as string || 'equity'
   res.json(await (etfGlobalProvider as any).getETFsByCategory(category))
+})
+
+// ── BRVM — Bourse Régionale des Valeurs Mobilières ─────────
+
+// Toutes les cotations BRVM
+export const brvmQuotes = handle(async (_req, res) => {
+  res.json(await (brvmProvider as any).getBRVMQuotes())
+})
+
+// Cotation d'un titre BRVM
+export const brvmQuote = handle(async (req, res) => {
+  res.json(await brvmProvider.getQuote(req.params.symbol.toUpperCase()))
+})
+
+// Historique d'un titre BRVM
+export const brvmHistorical = handle(async (req, res) => {
+  const period = (req.query.period as string) || '1mo'
+  res.json(await brvmProvider.getHistorical(req.params.symbol.toUpperCase(), period))
+})
+
+// Indices BRVM Composite et BRVM 10
+export const brvmIndices = handle(async (_req, res) => {
+  res.json(await (brvmProvider as any).getBRVMIndices())
+})
+
+// Performance par secteur UEMOA
+export const brvmSectors = handle(async (_req, res) => {
+  res.json(await (brvmProvider as any).getBRVMSectors())
+})
+
+// Répartition géographique (8 pays UEMOA)
+export const brvmCountries = handle(async (_req, res) => {
+  res.json(await (brvmProvider as any).getBRVMCountries())
+})
+
+// Vue marché complète BRVM
+export const brvmMarket = handle(async (_req, res) => {
+  res.json(await (brvmProvider as any).getBRVMMarketStats())
+})
+
+// Liste des sociétés cotées BRVM
+export const brvmCompanies = handle(async (_req, res) => {
+  res.json((brvmProvider as any).getBRVMCompanies())
 })

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, BarChart3, Eye, Search,
   CalendarDays, Bell, CreditCard, Settings, Shield, TrendingUp,
+  Globe,
 } from 'lucide-react'
 
 const NAV = [
@@ -15,6 +16,7 @@ const NAV = [
   { href:'/screener',  label:'Screener',     Icon:Search          },
   { href:'/calendar',  label:'Calendrier',   Icon:CalendarDays    },
   { href:'/alerts',    label:'Alertes',      Icon:Bell            },
+  { href:'/brvm',      label:'BRVM',         Icon:Globe           },
 ]
 
 const NAV_ACCOUNT = [

@@ -18,7 +18,6 @@ import { authenticate } from '../middlewares/auth.middleware'
 const router = Router()
 
 // ── /refresh : pas de JWT — protégé uniquement par CRON_SECRET header ─
-// (appelé par GitHub Actions, pas par le frontend)
 router.post('/brvm/refresh', brvmRefresh)
 
 // ── Toutes les autres routes requièrent un JWT ─────────────
@@ -38,23 +37,22 @@ router.get('/etf/:symbol/holdings',      etfHoldings)
 router.get('/etf/:symbol/sectors',       etfSectors)
 router.get('/etf/:symbol/performance',   etfPerformance)
 
-// ── BRVM — cache & statut (avec JWT) ───────────────────────
+// ── BRVM — exact routes AVANT les routes paramétriques ────
+// IMPORTANT: l'ordre est critique — Express matche dans l'ordre de déclaration.
+// /brvm/tools/* et /brvm/cache-status doivent être déclarés avant /brvm/:symbol/*
+// pour éviter que "tools" soit interprété comme un :symbol.
+
 router.get('/brvm/cache-status',         brvmCacheStatus)
 
-// ── BRVM — cotations & marché ──────────────────────────────
+// Cotations & marché (routes exactes)
 router.get('/brvm',                      brvmQuotes)
 router.get('/brvm/indices',              brvmIndices)
 router.get('/brvm/sectors',              brvmSectors)
 router.get('/brvm/countries',            brvmCountries)
 router.get('/brvm/market',               brvmMarket)
 router.get('/brvm/companies',            brvmCompanies)
-router.get('/brvm/:symbol/quote',        brvmQuote)
-router.get('/brvm/:symbol/historical',   brvmHistorical)
-router.get('/brvm/:symbol/liquidity',    brvmStockLiquidity)
-router.get('/brvm/:symbol/dividend',     brvmStockDividend)
-router.get('/brvm/:symbol/commodity',    brvmStockCommodity)
 
-// ── BRVM — outils d'analyse ────────────────────────────────
+// Outils d'analyse (routes exactes — AVANT /brvm/:symbol/*)
 router.get('/brvm/tools/liquidity',      brvmLiquidity)
 router.get('/brvm/tools/dividends',      brvmDividends)
 router.get('/brvm/tools/commodities',    brvmCommodities)
@@ -62,6 +60,13 @@ router.get('/brvm/tools/africa',         brvmAfricaComparison)
 router.get('/brvm/tools/macro',          brvmMacro)
 router.get('/brvm/tools/governance',     brvmGovernance)
 router.post('/brvm/tools/cost',          brvmTransactionCost)
+
+// Routes paramétriques (après toutes les routes exactes)
+router.get('/brvm/:symbol/quote',        brvmQuote)
+router.get('/brvm/:symbol/historical',   brvmHistorical)
+router.get('/brvm/:symbol/liquidity',    brvmStockLiquidity)
+router.get('/brvm/:symbol/dividend',     brvmStockDividend)
+router.get('/brvm/:symbol/commodity',    brvmStockCommodity)
 
 // ── Par symbole (marchés globaux) ──────────────────────────
 router.get('/:symbol/quote',             quote)

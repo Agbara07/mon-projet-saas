@@ -3,38 +3,56 @@ import prisma from '../config/prisma'
 import { marketRouter } from '../services/market/market-router'
 import { AuthRequest } from '../middlewares/auth.middleware'
 
-export const listPortfolios = async (req: AuthRequest, res: Response) => {
+const handle = (fn: (req: AuthRequest, res: Response) => Promise<any>) =>
+  async (req: AuthRequest, res: Response) => {
+    try { await fn(req, res) }
+    catch (e: any) {
+      console.error('[portfolio]', e?.message)
+      res.status(500).json({ message: 'Erreur serveur', error: e?.message })
+    }
+  }
+
+export const listPortfolios = handle(async (req, res) => {
   const portfolios = await prisma.portfolio.findMany({
     where: { userId: req.user!.userId },
     include: { holdings: true },
   })
   res.json(portfolios)
-}
+})
 
-export const createPortfolio = async (req: AuthRequest, res: Response) => {
+export const createPortfolio = handle(async (req, res) => {
   const portfolio = await prisma.portfolio.create({
     data: { name: req.body.name, description: req.body.description, userId: req.user!.userId },
   })
   res.status(201).json(portfolio)
-}
+})
 
-export const deletePortfolio = async (req: AuthRequest, res: Response) => {
+export const deletePortfolio = handle(async (req, res) => {
   await prisma.portfolio.delete({ where: { id: req.params.id } })
   res.json({ message: 'Portefeuille supprimé' })
-}
+})
 
-export const getPortfolioWithPrices = async (req: AuthRequest, res: Response) => {
+export const getPortfolioWithPrices = handle(async (req, res) => {
   const portfolio = await prisma.portfolio.findFirst({
     where: { id: req.params.id, userId: req.user!.userId },
     include: { holdings: { include: { transactions: true } } },
   })
   if (!portfolio) return res.status(404).json({ message: 'Introuvable' })
 
-  if (portfolio.holdings.length === 0) return res.json({ ...portfolio, totalValue: 0, totalPnl: 0, totalPnlPct: 0 })
+  if (portfolio.holdings.length === 0) {
+    return res.json({ ...portfolio, totalValue: 0, totalCost: 0, totalPnl: 0, totalPnlPct: 0 })
+  }
 
   const symbols = portfolio.holdings.map((h) => h.symbol)
-  const quotes = await marketRouter.getQuotes(symbols)
-  const qmap = Object.fromEntries(quotes.map((q) => [q.symbol, q]))
+
+  // Fallback gracieux si les providers de marché échouent
+  let qmap: Record<string, any> = {}
+  try {
+    const quotes = await marketRouter.getQuotes(symbols)
+    qmap = Object.fromEntries(quotes.map((q) => [q.symbol, q]))
+  } catch {
+    // Les prix restent à avgBuyPrice — PnL = 0
+  }
 
   let totalCost = 0
   let totalValue = 0
@@ -48,7 +66,7 @@ export const getPortfolioWithPrices = async (req: AuthRequest, res: Response) =>
     const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
     totalCost += cost
     totalValue += value
-    return { ...h, currentPrice, value, pnl, pnlPct, quote: q }
+    return { ...h, currentPrice, value, pnl, pnlPct, quote: q ?? null }
   })
 
   res.json({
@@ -59,13 +77,15 @@ export const getPortfolioWithPrices = async (req: AuthRequest, res: Response) =>
     totalPnl: totalValue - totalCost,
     totalPnlPct: totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0,
   })
-}
+})
 
-export const addHolding = async (req: AuthRequest, res: Response) => {
+export const addHolding = handle(async (req, res) => {
   const { symbol, quantity, avgBuyPrice, companyName } = req.body
   const portfolioId = req.params.id
 
-  const existing = await prisma.holding.findUnique({ where: { portfolioId_symbol: { portfolioId, symbol } } })
+  const existing = await prisma.holding.findUnique({
+    where: { portfolioId_symbol: { portfolioId, symbol } },
+  })
 
   let holding
   if (existing) {
@@ -82,13 +102,16 @@ export const addHolding = async (req: AuthRequest, res: Response) => {
   }
 
   await prisma.transaction.create({
-    data: { type: 'BUY', symbol, quantity, price: avgBuyPrice, total: quantity * avgBuyPrice, holdingId: holding.id },
+    data: {
+      type: 'BUY', symbol, quantity, price: avgBuyPrice,
+      total: quantity * avgBuyPrice, holdingId: holding.id,
+    },
   })
 
   res.status(201).json(holding)
-}
+})
 
-export const removeHolding = async (req: AuthRequest, res: Response) => {
+export const removeHolding = handle(async (req, res) => {
   await prisma.holding.delete({ where: { id: req.params.holdingId } })
   res.json({ message: 'Position supprimée' })
-}
+})

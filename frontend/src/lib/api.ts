@@ -16,10 +16,19 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       const refresh = localStorage.getItem('refreshToken')
       if (refresh) {
-        const { data } = await axios.post('/api/auth/refresh', { refreshToken: refresh })
-        localStorage.setItem('accessToken', data.accessToken)
-        error.config.headers.Authorization = `Bearer ${data.accessToken}`
-        return api(error.config)
+        try {
+          const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+          const { data } = await axios.post(`${baseURL}/auth/refresh`, { refreshToken: refresh })
+          localStorage.setItem('accessToken', data.accessToken)
+          error.config.headers.Authorization = `Bearer ${data.accessToken}`
+          return api(error.config)
+        } catch {
+          // Refresh échoué → déconnexion propre
+          localStorage.removeItem('accessToken')
+          localStorage.removeItem('refreshToken')
+          window.location.href = '/login'
+          return Promise.reject(error)
+        }
       }
       window.location.href = '/login'
     }

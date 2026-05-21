@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import prisma from '../config/prisma'
+import { TRIAL_DURATION_DAYS } from '../config/plan-limits'
 
 const signAccess = (userId: string, orgId: string, role: string) =>
   jwt.sign({ userId, orgId, role }, process.env.JWT_SECRET!, { expiresIn: '15m' } as jwt.SignOptions)
@@ -14,10 +15,14 @@ export const register = async (req: Request, res: Response) => {
   const hashed = await bcrypt.hash(password, 10)
   const slug = orgName.toLowerCase().replace(/\s+/g, '-')
 
+  const trialEndsAt = new Date()
+  trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DURATION_DAYS)
+
   const org = await prisma.organization.create({
     data: {
       name: orgName,
       slug,
+      trialEndsAt,
       users: {
         create: { email, password: hashed, name, role: 'OWNER' },
       },

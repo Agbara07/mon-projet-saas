@@ -8,14 +8,15 @@ datasource db {
 }
 
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  plan      Plan     @default(FREE)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  plan         Plan      @default(FREE)
+  trialEndsAt  DateTime?             // null = pas de trial actif ou trial expiré
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  users        User[]
+  users         User[]
   subscriptions Subscription[]
 }
 
@@ -46,6 +47,7 @@ model Subscription {
   stripePriceId        String?
   status               SubscriptionStatus @default(INACTIVE)
   currentPeriodEnd     DateTime?
+  canceledAt           DateTime?          // date d'annulation effective (grace period)
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -61,7 +63,9 @@ enum Role {
 
 enum Plan {
   FREE
+  STARTER
   PRO
+  ADVISOR
   ENTERPRISE
 }
 

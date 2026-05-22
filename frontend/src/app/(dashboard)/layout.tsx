@@ -1,27 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
-import { Bell, ChevronDown, LogOut, Command } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, Command, Menu } from 'lucide-react'
 import Link from 'next/link'
-import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { CommandPalette, useCommandPalette } from '@/components/ui/CommandPalette'
 import { NavigationProgress } from '@/components/ui/NavigationProgress'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
-
-interface User { name:string; email:string; role:string; organization:{ name:string; plan:string } }
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [user, setUser]         = useState<User | null>(null)
-  const [showMenu, setShowMenu] = useState(false)
+  const { user, isAdmin, trialActive, trialDaysLeft } = useCurrentUser()
+  const [showMenu,    setShowMenu]    = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
   const cmd    = useCommandPalette()
-
-  useEffect(() => {
-    api.get('/users/me').then(r => setUser(r.data)).catch(() => {})
-  }, [])
 
   const logout = () => {
     localStorage.removeItem('accessToken')
@@ -34,27 +29,43 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <NavigationProgress />
       <CommandPalette open={cmd.open} onClose={cmd.close} />
 
-      {/* ── Skip link — accessible keyboard nav ── */}
       <a href="#main-content" className="skip-to-main">
         Aller au contenu principal
       </a>
 
-      {/* Sidebar parfaitement alignée avec la topbar */}
-      <Sidebar />
+      <Sidebar
+        user={user}
+        trialActive={trialActive}
+        trialDaysLeft={trialDaysLeft}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* Header — h-9 précis, bordure continue */}
+        {/* ── Header ── */}
         <header
           role="banner"
           className={cn(
             'flex items-center gap-3 px-4 h-9 flex-shrink-0',
-            /* Même hauteur que les status bars des pages pour cohérence visuelle */
             'bg-[var(--fin-panel)] border-b border-[var(--fin-border)]',
           )}
         >
+          {/* Hamburger — mobile uniquement */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Ouvrir le menu de navigation"
+            aria-expanded={sidebarOpen}
+            aria-controls="sidebar-drawer"
+            className={cn(
+              'lg:hidden flex items-center justify-center w-8 h-8 rounded-lg transition-colors',
+              'text-[var(--fin-t3)] hover:text-[var(--fin-t1)] hover:bg-[var(--fin-hover)]',
+            )}
+          >
+            <Menu size={15}/>
+          </button>
 
-          {/* Cmd+K trigger */}
+          {/* Cmd+K — desktop */}
           <button
             onClick={() => cmd.setOpen(true)}
             aria-label="Ouvrir la palette de commandes (Ctrl+K)"
@@ -78,30 +89,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Right controls */}
           <div className="flex items-center gap-1.5">
-
             <ThemeToggle />
 
-            {/* Notifications */}
             <Link href="/alerts"
+              aria-label="Alertes"
               className={cn(
                 'relative flex items-center justify-center w-8 h-8 rounded-lg transition-colors',
                 'text-[var(--fin-t3)] hover:text-[var(--fin-t1)] hover:bg-[var(--fin-hover)]',
                 'border border-transparent hover:border-[var(--fin-border)]'
               )}>
               <Bell size={14} strokeWidth={1.5}/>
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[var(--fin-red)] rounded-full"/>
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[var(--fin-red)] rounded-full" aria-hidden="true"/>
             </Link>
 
-            {/* User */}
+            {/* User menu */}
             {user && (
               <div className="relative">
-                <button onClick={() => setShowMenu(v => !v)}
+                <button
+                  onClick={() => setShowMenu(v => !v)}
+                  aria-label="Menu utilisateur"
+                  aria-expanded={showMenu}
+                  aria-haspopup="menu"
                   className={cn(
                     'flex items-center gap-2 h-8 pl-2 pr-1.5 rounded-lg transition-colors',
                     'border border-[var(--fin-border)] hover:border-[var(--fin-border-2)]',
                     'hover:bg-[var(--fin-hover)]',
                   )}>
-                  <div className="w-5 h-5 rounded bg-[var(--fin-blue)] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                  <div className="w-5 h-5 rounded bg-[var(--fin-blue)] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0" aria-hidden="true">
                     {(user.name || user.email)[0].toUpperCase()}
                   </div>
                   <span className="text-[var(--fin-t2)] text-xs font-medium hidden sm:block">
@@ -112,12 +126,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {showMenu && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}/>
-                    <div className={cn(
-                      'absolute right-0 top-full mt-1 w-52 z-50 overflow-hidden rounded-lg',
-                      'bg-[var(--fin-panel)] border border-[var(--fin-border)]',
-                      'shadow-2xl shadow-black/30'
-                    )}>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} aria-hidden="true"/>
+                    <div
+                      role="menu"
+                      aria-label="Menu utilisateur"
+                      className={cn(
+                        'absolute right-0 top-full mt-1 w-52 z-50 overflow-hidden rounded-lg',
+                        'bg-[var(--fin-panel)] border border-[var(--fin-border)]',
+                        'shadow-2xl shadow-black/30'
+                      )}>
                       <div className="px-3 py-2.5 border-b border-[var(--fin-border)]">
                         <p className="font-semibold text-[var(--fin-t1)] text-xs">{user.name}</p>
                         <p className="text-[var(--fin-t3)] text-[10px] truncate font-mono">{user.email}</p>
@@ -129,13 +146,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           </span>
                         </p>
                       </div>
-                      <div className="p-1">
+                      <div className="p-1" role="group">
                         {[
                           { href:'/billing',  label:'Abonnement' },
                           { href:'/settings', label:'Paramètres' },
-                          { href:'/admin',    label:'Administration' },
+                          ...(isAdmin ? [{ href:'/admin', label:'Administration' }] : []),
                         ].map(({ href, label }) => (
-                          <Link key={href} href={href} onClick={() => setShowMenu(false)}
+                          <Link key={href} href={href} role="menuitem" onClick={() => setShowMenu(false)}
                             className={cn(
                               'flex items-center px-3 py-1.5 text-xs text-[var(--fin-t2)] rounded',
                               'hover:bg-[var(--fin-hover)] hover:text-[var(--fin-t1)] transition-colors'
@@ -143,8 +160,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             {label}
                           </Link>
                         ))}
-                        <hr className="my-1 border-[var(--fin-border)]"/>
-                        <button onClick={logout}
+                        <hr className="my-1 border-[var(--fin-border)]" role="separator"/>
+                        <button
+                          role="menuitem"
+                          onClick={logout}
                           className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--fin-red)] hover:bg-[var(--fin-red-bg)] rounded transition-colors">
                           <LogOut size={12} strokeWidth={1.5}/> Se déconnecter
                         </button>
@@ -157,7 +176,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* Page content — main landmark pour accessibilité */}
         <main id="main-content" role="main" className="flex-1 overflow-auto" tabIndex={-1}>
           {children}
         </main>

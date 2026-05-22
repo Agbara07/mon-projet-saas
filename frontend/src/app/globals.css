@@ -104,6 +104,14 @@
   --brand-dim:     var(--fin-green-bg);
 }
 
+/* ── Focus visible — unified (une seule déclaration) ───────── */
+:focus-visible {
+  outline: 2px solid var(--fin-blue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
 /* ── Skip link — accessibilité clavier ─────────────────────── */
 .skip-to-main {
   position: absolute;
@@ -120,14 +128,6 @@
   transition: top 0.1s;
 }
 .skip-to-main:focus { top: 0; }
-
-/* ── Focus visible — accessible et non intrusif ────────────── */
-:focus-visible {
-  outline: 2px solid var(--fin-blue);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-:focus:not(:focus-visible) { outline: none; }
 
 /* ── Reduced motion ────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
@@ -173,11 +173,7 @@ body {
 /* ── Selection ─────────────────────────────────────────────── */
 ::selection { background: rgba(34,197,94,0.25); color: #fff; }
 
-/* ── Focus ─────────────────────────────────────────────────── */
-:focus-visible {
-  outline: 2px solid rgba(34,197,94,0.6);
-  outline-offset: 2px;
-}
+/* ── focus-visible géré en haut du fichier (une seule source) ─ */
 
 /* ── Utilities ─────────────────────────────────────────────── */
 @layer utilities {

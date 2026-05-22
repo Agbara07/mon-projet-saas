@@ -6,8 +6,9 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import {
   TrendingUp, TrendingDown, BarChart3,
   Calendar, Eye, ArrowRight, Zap, Activity, RefreshCw,
-  Clock,
+  Clock, WifiOff,
 } from 'lucide-react'
+import { marketStatusLabel } from '@/lib/market-hours'
 import Link from 'next/link'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -124,9 +125,18 @@ export default function DashboardPage() {
         <Activity size={11} strokeWidth={1.5} className="text-[var(--fin-t3)]"/>
         <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">Dashboard</span>
         <div className="w-px h-3.5 bg-[var(--fin-border)]"/>
-        <span className="flex items-center gap-1 text-[10px] font-mono text-[var(--fin-green)]">
-          <Zap size={9}/>MARCHÉ OUVERT
-        </span>
+        {(() => {
+          const { open, label } = marketStatusLabel()
+          return (
+            <span className={cn(
+              'flex items-center gap-1 text-[10px] font-mono',
+              open ? 'text-[var(--fin-green)]' : 'text-[var(--fin-t3)]'
+            )}>
+              {open ? <Zap size={9}/> : <WifiOff size={9}/>}
+              {label}
+            </span>
+          )
+        })()}
         <div className="flex-1"/>
         {user && (
           <span className="text-[10px] font-mono text-[var(--fin-t3)]">

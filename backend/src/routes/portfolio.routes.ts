@@ -1,11 +1,12 @@
 import { Router } from 'express'
 import { listPortfolios, createPortfolio, deletePortfolio, getPortfolioWithPrices, addHolding, removeHolding } from '../controllers/portfolio.controller'
 import { authenticate } from '../middlewares/auth.middleware'
+import { planGuard } from '../middlewares/plan-guard.middleware'
 
 const router = Router()
 router.use(authenticate)
 router.get('/', listPortfolios)
-router.post('/', createPortfolio)
+router.post('/', planGuard('portfolios'), createPortfolio)
 router.get('/:id', getPortfolioWithPrices)
 router.delete('/:id', deletePortfolio)
 router.post('/:id/holdings', addHolding)

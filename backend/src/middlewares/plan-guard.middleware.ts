@@ -12,7 +12,7 @@ import { getLimits, withinLimit } from '../config/plan-limits'
 export function planGuard(resource: 'portfolios' | 'alerts' | 'watchlistItems') {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user?.id
+      const userId = (req as any).user?.userId
       if (!userId) return res.status(401).json({ message: 'Non authentifié' })
 
       const user = await prisma.user.findUnique({
@@ -69,7 +69,7 @@ export function planGuard(resource: 'portfolios' | 'alerts' | 'watchlistItems') 
  */
 export async function attachPlanInfo(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = (req as any).user?.id
+    const userId = (req as any).user?.userId
     if (!userId) return next()
 
     const user = await prisma.user.findUnique({

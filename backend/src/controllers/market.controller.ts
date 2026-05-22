@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { marketRouter, benzingaProvider, tmxProvider, etfGlobalProvider, brvmProvider } from '../services/market/market-router'
+import { marketRouter, benzingaProvider, tmxProvider, etfGlobalProvider, brvmProvider, fmpProvider } from '../services/market/market-router'
 import { ScreenerFilters } from '../services/market/types'
 import {
   getAllLiquidityScores, computeLiquidityScore,
@@ -263,4 +263,52 @@ export const brvmMarket = handle(async (_req, res) => {
 // Liste des sociétés cotées BRVM
 export const brvmCompanies = handle(async (_req, res) => {
   res.json((brvmProvider as any).getBRVMCompanies())
+})
+
+/* ── FMP — Données fondamentales ────────────────────────────── */
+
+// Bilans complets : income + balance + cash flow + estimations + DCF
+export const fundamentals = handle(async (req, res) => {
+  const symbol = req.params.symbol.toUpperCase()
+  const limit  = Math.min(Number(req.query.limit) || 10, 30)
+  const data   = await (fmpProvider as any).getFundamentals(symbol, limit)
+  res.json(data)
+})
+
+// Estimations analystes (EPS forward, revenus forward, consensus)
+export const analystEstimates = handle(async (req, res) => {
+  const symbol = req.params.symbol.toUpperCase()
+  const data   = await (fmpProvider as any).getAnalystEstimates(symbol)
+  res.json(data)
+})
+
+// Valorisation DCF (fair value par action + % upside)
+export const dcfValuation = handle(async (req, res) => {
+  const symbol = req.params.symbol.toUpperCase()
+  const data   = await (fmpProvider as any).getDCF(symbol)
+  res.json(data)
+})
+
+// Compte de résultats seul (N dernières années)
+export const incomeStatements = handle(async (req, res) => {
+  const symbol = req.params.symbol.toUpperCase()
+  const limit  = Math.min(Number(req.query.limit) || 10, 30)
+  const data   = await (fmpProvider as any).getIncomeStatements(symbol, limit)
+  res.json(data)
+})
+
+// Bilans seuls
+export const balanceSheets = handle(async (req, res) => {
+  const symbol = req.params.symbol.toUpperCase()
+  const limit  = Math.min(Number(req.query.limit) || 10, 30)
+  const data   = await (fmpProvider as any).getBalanceSheets(symbol, limit)
+  res.json(data)
+})
+
+// Cash flows seuls
+export const cashFlows = handle(async (req, res) => {
+  const symbol = req.params.symbol.toUpperCase()
+  const limit  = Math.min(Number(req.query.limit) || 10, 30)
+  const data   = await (fmpProvider as any).getCashFlows(symbol, limit)
+  res.json(data)
 })

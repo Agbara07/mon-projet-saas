@@ -3,6 +3,8 @@ import {
   quote, historical, search, screener, profile, news,
   earningsCalendar, marketOverview, technicalIndicators, providersStatus,
   analystRatings, corporateEvents, tsxQuote,
+  fundamentals, analystEstimates, dcfValuation,
+  incomeStatements, balanceSheets, cashFlows,
   etfDetails, etfHoldings, etfSectors, etfPerformance, etfByCategory,
   brvmQuotes, brvmQuote, brvmHistorical, brvmIndices,
   brvmSectors, brvmCountries, brvmMarket, brvmCompanies,
@@ -77,5 +79,13 @@ router.get('/:symbol/technical',         technicalIndicators)
 router.get('/:symbol/ratings',           analystRatings)
 router.get('/:symbol/events',            corporateEvents)
 router.get('/:symbol/tsx',               tsxQuote)
+
+// ── FMP — Données fondamentales ────────────────────────────────
+router.get('/:symbol/fundamentals',      fundamentals)       // bilans complets 10 ans + estimations + DCF
+router.get('/:symbol/estimates',         analystEstimates)   // estimations EPS/revenus forward
+router.get('/:symbol/dcf',               dcfValuation)       // fair value DCF + upside
+router.get('/:symbol/income-statements', incomeStatements)   // compte de résultats seul
+router.get('/:symbol/balance-sheets',    balanceSheets)      // bilans seuls
+router.get('/:symbol/cash-flows',        cashFlows)          // cash flows seuls
 
 export default router

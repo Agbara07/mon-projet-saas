@@ -126,6 +126,69 @@ export interface IMarketProvider {
   getMarketOverview?():                                 Promise<Quote[]>
 }
 
+/* ── Données fondamentales (FMP) ────────────────────────────── */
+
+export interface IncomeStatement {
+  date:             string
+  revenue:          number
+  grossProfit:      number
+  operatingIncome:  number
+  netIncome:        number
+  eps:              number
+  ebitda:           number
+  grossMargin?:     number
+  operatingMargin?: number
+  netMargin?:       number
+}
+
+export interface BalanceSheet {
+  date:             string
+  totalAssets:      number
+  totalLiabilities: number
+  totalEquity:      number
+  cash:             number
+  debt:             number
+  goodwill?:        number
+  debtToEquity?:    number
+}
+
+export interface CashFlowStatement {
+  date:                string
+  operatingCashFlow:   number
+  capitalExpenditure:  number
+  freeCashFlow:        number
+  dividendsPaid?:      number
+}
+
+export interface AnalystEstimate {
+  date:             string
+  epsAvg:           number
+  epsHigh:          number
+  epsLow:           number
+  revenueAvg:       number
+  revenueHigh:      number
+  revenueLow:       number
+  numberAnalysts:   number
+}
+
+export interface DCFValuation {
+  symbol:     string
+  date:       string
+  dcf:        number   // fair value par action
+  stockPrice: number
+  upside:     number   // % upside = (dcf - price) / price * 100
+}
+
+export interface Fundamentals {
+  symbol:            string
+  incomeStatements:  IncomeStatement[]
+  balanceSheets:     BalanceSheet[]
+  cashFlows:         CashFlowStatement[]
+  analystEstimates:  AnalystEstimate[]
+  dcf?:              DCFValuation
+  provider:          string
+}
+
 /* ── Statut d'un provider ───────────────────────────────────── */
 export interface ProviderStatus {
   name:        string

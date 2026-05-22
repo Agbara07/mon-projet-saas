@@ -18,6 +18,7 @@ import { BenzingaProvider }     from './providers/benzinga.provider'
 import { TMXProvider }          from './providers/tmx.provider'
 import { ETFGlobalProvider }    from './providers/etf-global.provider'
 import { BRVMProvider }         from './providers/brvm.provider'
+import { FMPProvider }          from './providers/fmp.provider'
 
 /* ── Providers disponibles (priorité croissante) ────────── */
 const ALL_PROVIDERS: IMarketProvider[] = [
@@ -33,6 +34,7 @@ const ALL_PROVIDERS: IMarketProvider[] = [
   new TMXProvider(),
   new ETFGlobalProvider(),
   new BRVMProvider(),
+  new FMPProvider(),
 ].sort((a, b) => a.priority - b.priority)
 
 // Providers spécialisés (accès direct sans routing générique)
@@ -40,17 +42,18 @@ export const benzingaProvider  = new BenzingaProvider()
 export const tmxProvider       = new TMXProvider()
 export const etfGlobalProvider = new ETFGlobalProvider()
 export const brvmProvider      = new BRVMProvider()
+export const fmpProvider       = new FMPProvider()
 
-/* ── Routing par type de donnée (11 providers) ──────────── */
+/* ── Routing par type de donnée (13 providers) ──────────── */
 const ROUTING = {
   quote:      ['finnhub','twelvedata','polygon','iex','eodhd','alphavantage','marketstack','marketdata'],
   historical: ['twelvedata','polygon','iex','eodhd','alphavantage','marketstack','finnhub'],
-  profile:    ['finnhub','iex','eodhd','alphavantage','polygon','twelvedata'],
-  news:       ['benzinga','polygon','finnhub','iex','alphavantage','eodhd'],  // Benzinga prioritaire pour news
-  earnings:   ['benzinga','finnhub','tmx','eodhd'],                           // Benzinga + TMX pour events
-  search:     ['finnhub','twelvedata','polygon','iex','alphavantage','eodhd'],
+  profile:    ['finnhub','iex','eodhd','fmp','alphavantage','polygon','twelvedata'],  // FMP ajouté pos.4
+  news:       ['benzinga','polygon','finnhub','iex','alphavantage','eodhd'],
+  earnings:   ['benzinga','fmp','finnhub','tmx','eodhd'],                             // FMP ajouté pos.2
+  search:     ['finnhub','twelvedata','polygon','fmp','iex','alphavantage','eodhd'],  // FMP ajouté pos.4
   overview:   ['finnhub','twelvedata','polygon','iex'],
-  technical:  ['twelvedata'],  // seul avec indicateurs natifs gratuits
+  technical:  ['twelvedata'],
 }
 
 function getProvidersByType(type: keyof typeof ROUTING): IMarketProvider[] {

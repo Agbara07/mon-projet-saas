@@ -37,8 +37,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         user={user}
         trialActive={trialActive}
         trialDaysLeft={trialDaysLeft}
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        mobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import { Bell, ChevronDown, LogOut, Command, Menu } from 'lucide-react'
 import Link from 'next/link'
@@ -12,11 +12,19 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, trialActive, trialDaysLeft } = useCurrentUser()
+  const { user, isAdmin, trialActive, trialDaysLeft, loading: userLoading } = useCurrentUser()
   const [showMenu,    setShowMenu]    = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
   const cmd    = useCommandPalette()
+
+  // Redirect to login if no token or unauthenticated
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const token = localStorage.getItem('accessToken')
+    if (!token) { router.replace('/login'); return }
+    if (!userLoading && !user) router.replace('/login')
+  }, [user, userLoading, router])
 
   const logout = () => {
     localStorage.removeItem('accessToken')

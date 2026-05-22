@@ -5,7 +5,8 @@ import {
   AnalystEstimate, DCFValuation, Fundamentals,
 } from '../types'
 
-const BASE = 'https://financialmodelingprep.com/api/v3'
+// FMP migré vers /stable/ en août 2025 — /api/v3/ et /api/v4/ = Legacy
+const BASE = 'https://financialmodelingprep.com/stable'
 const KEY  = process.env.FMP_API_KEY ?? ''
 
 async function fmpFetch(path: string): Promise<any> {
@@ -27,7 +28,7 @@ export class FMPProvider implements IMarketProvider {
   /* ── Méthodes obligatoires (FMP non optimisé pour ces usages) ── */
 
   async getQuote(symbol: string): Promise<Quote> {
-    const data = await fmpFetch(`/quote/${symbol}`)
+    const data = await fmpFetch(`/quote?symbol=${symbol}`)
     const q = Array.isArray(data) ? data[0] : data
     if (!q?.price) throw new Error(`Pas de quote FMP pour ${symbol}`)
     return {
@@ -71,7 +72,7 @@ export class FMPProvider implements IMarketProvider {
   }
 
   async getEarningsCalendar(): Promise<EarningsEvent[]> {
-    const data = await fmpFetch('/earning_calendar')
+    const data = await fmpFetch('/earning-calendar')
     if (!Array.isArray(data)) return []
     return data.slice(0, 50).map((e: any) => ({
       symbol:      e.symbol,
@@ -89,7 +90,7 @@ export class FMPProvider implements IMarketProvider {
 
   /* ── getProfile — FMP a des fondamentaux riches ────────────── */
   async getProfile(symbol: string): Promise<StockProfile> {
-    const data = await fmpFetch(`/profile/${symbol}`)
+    const data = await fmpFetch(`/profile?symbol=${symbol}`)
     const p    = Array.isArray(data) ? data[0] : data
     if (!p?.symbol) throw new Error(`Pas de profil FMP pour ${symbol}`)
     return {
@@ -118,7 +119,7 @@ export class FMPProvider implements IMarketProvider {
   /* ── Méthodes spécialisées FMP ─────────────────────────────── */
 
   async getIncomeStatements(symbol: string, limit = 10): Promise<IncomeStatement[]> {
-    const data = await fmpFetch(`/income-statement/${symbol}?limit=${limit}`)
+    const data = await fmpFetch(`/income-statement?symbol=${symbol}&limit=${limit}`)
     if (!Array.isArray(data)) return []
     return data.map((s: any) => ({
       date:             s.date,
@@ -135,7 +136,7 @@ export class FMPProvider implements IMarketProvider {
   }
 
   async getBalanceSheets(symbol: string, limit = 10): Promise<BalanceSheet[]> {
-    const data = await fmpFetch(`/balance-sheet-statement/${symbol}?limit=${limit}`)
+    const data = await fmpFetch(`/balance-sheet-statement?symbol=${symbol}&limit=${limit}`)
     if (!Array.isArray(data)) return []
     return data.map((s: any) => ({
       date:             s.date,
@@ -152,7 +153,7 @@ export class FMPProvider implements IMarketProvider {
   }
 
   async getCashFlows(symbol: string, limit = 10): Promise<CashFlowStatement[]> {
-    const data = await fmpFetch(`/cash-flow-statement/${symbol}?limit=${limit}`)
+    const data = await fmpFetch(`/cash-flow-statement?symbol=${symbol}&limit=${limit}`)
     if (!Array.isArray(data)) return []
     return data.map((s: any) => ({
       date:               s.date,
@@ -164,32 +165,22 @@ export class FMPProvider implements IMarketProvider {
   }
 
   async getAnalystEstimates(symbol: string): Promise<AnalystEstimate[]> {
-    const data = await fmpFetch(`/analyst-estimates/${symbol}?limit=8`)
-    if (!Array.isArray(data)) return []
-    return data.map((e: any) => ({
-      date:           e.date,
-      epsAvg:         e.estimatedEpsAvg ?? 0,
-      epsHigh:        e.estimatedEpsHigh ?? 0,
-      epsLow:         e.estimatedEpsLow ?? 0,
-      revenueAvg:     e.estimatedRevenueAvg ?? 0,
-      revenueHigh:    e.estimatedRevenueHigh ?? 0,
-      revenueLow:     e.estimatedRevenueLow ?? 0,
-      numberAnalysts: e.numberAnalystEstimatedEps ?? 0,
-    }))
+    // /stable/analyst-estimates requiert un plan payant FMP
+    // Endpoint non disponible sur le plan gratuit → retourne tableau vide
+    throw new Error('analyst-estimates non disponible sur le plan FMP gratuit — upgrade requis')
   }
 
   async getDCF(symbol: string): Promise<DCFValuation> {
-    const data = await fmpFetch(`/discounted-cash-flow/${symbol}`)
+    const data = await fmpFetch(`/discounted-cash-flow?symbol=${symbol}`)
     const d    = Array.isArray(data) ? data[0] : data
     if (!d?.dcf) throw new Error(`Pas de DCF FMP pour ${symbol}`)
-    const upside = d.Stock_Price > 0
-      ? ((d.dcf - d.Stock_Price) / d.Stock_Price) * 100
-      : 0
+    const price  = d['Stock Price'] ?? d.Stock_Price ?? d.stockPrice ?? 0
+    const upside = price > 0 ? ((d.dcf - price) / price) * 100 : 0
     return {
       symbol,
       date:       d.date,
       dcf:        d.dcf,
-      stockPrice: d.Stock_Price ?? 0,
+      stockPrice: price,
       upside:     Math.round(upside * 100) / 100,
     }
   }

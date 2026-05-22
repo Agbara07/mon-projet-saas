@@ -13,6 +13,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
+    if (error.response?.status === 403 && error.response?.data?.code === 'PLAN_LIMIT_REACHED') {
+      window.dispatchEvent(new CustomEvent('plan:limit-reached', { detail: error.response.data }))
+      return Promise.reject(error)
+    }
+
     if (error.response?.status === 401) {
       const refresh = localStorage.getItem('refreshToken')
       if (refresh) {

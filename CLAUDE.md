@@ -82,6 +82,24 @@ Commandes slash disponibles dans ce projet — invoquer avec `/nom` dans Claude 
 | `/tester-et-deboguer`       | Debugging, cause racine, test de non-régression             |
 | `/verifier-sante`           | Vérifie que l'environnement local est 100% opérationnel     |
 | `/concepteur-ui-ux`         | Interfaces modernes, accessibles, performantes (Tailwind)   |
+| `/analyst-wallstreet`       | Analyse financière, pricing, API data, arbitrage coût/perf  |
+| `/expert-brvm`              | Marché BRVM/UEMOA, données africaines, modélisation FCFA    |
+
+## Règles de déclenchement automatique des skills
+
+**IMPORTANT — Claude doit invoquer ces skills sans attendre que l'utilisateur tape la commande :**
+
+| Si l'utilisateur parle de…                                          | Déclencher                  |
+|----------------------------------------------------------------------|-----------------------------|
+| Déployer, mettre en prod, pousser sur Vercel/Railway                | `/deployer-prod`            |
+| Pricing, business model, API financière, coût/perf, EBITDA, LTV    | `/analyst-wallstreet`       |
+| BRVM, UEMOA, Abidjan, marché africain, FCFA, SikaFinance            | `/expert-brvm`              |
+| Bug inexplicable, test en échec, régressions                        | `/tester-et-deboguer`       |
+| Nouvelle feature à coder (avant d'écrire le code)                  | `/planifier-architecture`   |
+| Problème de sécurité, secrets, injections, auth                     | `/audit-securite`           |
+| "Est-ce que tout marche ?", environnement local                     | `/verifier-sante`           |
+| Nouvelle page, composant UI, design                                 | `/concepteur-ui-ux`         |
+| Ambiguïté dans une demande, besoin flou                             | `/clarifier-besoin`         |
 
 ## Providers de données de marché (12 au total)
 

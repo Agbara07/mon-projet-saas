@@ -256,6 +256,20 @@ cd frontend && npm run dev     # port 3000
 
 <!-- Les entrées ci-dessous sont ajoutées automatiquement par Claude avant chaque compression de contexte -->
 
+### Session du 22/05/2026 — Autonome
+- Migré `node-cron` 3.x → 4.2.1 (CVE GHSA-w5hq-g745-h8pq corrigée)
+- Ajouté système freemium + trial 14j : `Plan` enum (FREE/STARTER/PRO/ADVISOR), `trialEndsAt` sur `Organization`, migration Prisma
+- Créé `plan-limits.ts`, `plan-guard.middleware.ts`, branché `planGuard` sur POST `/portfolios`, `/alerts`, `/watchlist`
+- Créé page `/billing` complète (4 plans, trial banner, Stripe Checkout), `GET /billing/info`, webhook plan sync
+- Ajouté `UpgradeModal` déclenchée par `CustomEvent plan:limit-reached` depuis axios interceptor
+- Correction définitive sidebar double-render : `hidden lg:flex` desktop + `{mobileOpen && ...}` mobile overlay
+- Ajouté `useCurrentUser` hook partagé, market hours dynamique, admin conditionnel par rôle
+- Corrigé 6 problèmes UI audit : focus-visible unifié, taille texte, footer sidebar contextuel
+- Ajouté 12 tests dashboard (portfolio, watchlist, calendar, settings, billing) — 24/24 frontend
+- Créé skills `analyst-wallstreet` et `expert-brvm`
+- Configuré `settings.local.json` permissions `dontAsk`
+- Déployé Railway (push master) + Vercel (`vercel --prod`) — production opérationnelle
+
 ### Session du 21/05/2026 — 19:30
 - Installé 8 skills dans `.claude/commands/` (`audit-securite`, `deployer-prod`, `verifier-sante`, etc.)
 - Lancé `/verifier-sante` : builds ✅, TypeScript ✅, Prisma ✅, node_modules ✅

@@ -99,6 +99,7 @@ export default function BillingPage() {
   useEffect(() => {
     api.get('/billing/info')
       .then(r => setInfo(r.data))
+      .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 

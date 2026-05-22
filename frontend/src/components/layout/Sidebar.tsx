@@ -201,29 +201,121 @@ export default function Sidebar({ user, trialActive, trialDaysLeft, open, onClos
 
   return (
     <>
-      {/* ── Desktop : sidebar dans le flux ── */}
-      <div className="hidden lg:flex w-[172px] min-h-screen flex-shrink-0">
-        {sidebarContent}
-      </div>
+      {/* ── Backdrop mobile (indépendant de la sidebar) ── */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* ── Mobile : drawer overlay ── */}
-      <div
-        aria-hidden={!open}
+      {/*
+        Un seul élément <aside> — deux comportements via CSS :
+        • Mobile (<lg) : fixed, translate-x selon `open`
+        • Desktop (≥lg) : static, toujours visible, largeur réduite
+      */}
+      <aside
+        role="navigation"
+        aria-label="Navigation principale"
         className={cn(
-          'lg:hidden fixed inset-0 z-40 transition-opacity duration-200',
-          open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          'flex flex-col flex-shrink-0 z-50',
+          'bg-[var(--fin-panel)] border-r border-[var(--fin-border)]',
+          /* Mobile : drawer fixe, slide in/out */
+          'fixed inset-y-0 left-0 w-[220px]',
+          'transition-transform duration-200 ease-out shadow-2xl lg:shadow-none',
+          open ? 'translate-x-0' : '-translate-x-full',
+          /* Desktop : statique dans le flux, toujours visible */
+          'lg:static lg:translate-x-0 lg:w-[172px] lg:min-h-screen',
         )}
       >
-        {/* Backdrop */}
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}/>
-        {/* Drawer */}
-        <div className={cn(
-          'absolute inset-y-0 left-0 w-[220px] transition-transform duration-200 ease-out shadow-2xl',
-          open ? 'translate-x-0' : '-translate-x-full'
-        )}>
-          {sidebarContent}
+        {/* ── Logo ── */}
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--fin-border)]">
+          <Link
+            href="/dashboard"
+            aria-label="InvestSaaS Terminal — Accueil"
+            className="flex items-center gap-2 group outline-none focus-visible:ring-2 focus-visible:ring-[var(--fin-blue)] rounded"
+          >
+            <div className="w-6 h-6 rounded bg-[var(--fin-green)] flex items-center justify-center flex-shrink-0" aria-hidden="true">
+              <TrendingUp size={12} strokeWidth={2.5} className="text-white"/>
+            </div>
+            <div>
+              <p className="font-bold text-[var(--fin-t1)] text-[11px] leading-none tracking-tight">InvestSaaS</p>
+              <p className="text-[var(--fin-t3)] text-[9px] mt-0.5 font-mono tracking-widest uppercase">Terminal</p>
+            </div>
+          </Link>
+          <button
+            onClick={onClose}
+            aria-label="Fermer le menu"
+            className="lg:hidden p-1 rounded text-[var(--fin-t3)] hover:text-[var(--fin-t1)] hover:bg-[var(--fin-hover)] transition-colors"
+          >
+            <X size={15}/>
+          </button>
         </div>
-      </div>
+
+        {/* ── Nav principale ── */}
+        <nav className="flex-1 px-1.5 py-1.5 overflow-y-auto" aria-label="Marchés">
+          <p className="text-[10px] font-bold text-[var(--fin-t3)] uppercase tracking-[0.15em] px-2 py-1 mb-0.5" aria-hidden="true">
+            Marchés
+          </p>
+
+          {NAV.map(({ href, label, Icon, key, shortcut }) =>
+            navLink(href, label, Icon, shortcut, key)
+          )}
+
+          {/* ── Compte ── */}
+          <div className="mt-2 pt-2 border-t border-[var(--fin-border)]" aria-label="Compte">
+            <p className="text-[10px] font-bold text-[var(--fin-t3)] uppercase tracking-[0.15em] px-2 py-1 mb-0.5" aria-hidden="true">
+              Compte
+            </p>
+            {NAV_BOTTOM.map(({ href, label, Icon }) => navLink(href, label, Icon))}
+            {isAdmin && navLink('/admin', 'Admin', Shield)}
+          </div>
+        </nav>
+
+        {/* ── Footer contextuel plan/trial ── */}
+        <div className="px-1.5 py-1.5 border-t border-[var(--fin-border)] space-y-1">
+          {trialActive ? (
+            <Link href="/billing" className={cn(
+              'flex items-center gap-2 px-2.5 py-1.5 rounded text-[11px] transition-all',
+              'bg-[var(--fin-amber-bg)] text-[var(--fin-amber)]',
+              'border border-[var(--fin-amber)] border-opacity-25 hover:border-opacity-50',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fin-amber)]'
+            )}>
+              <Clock size={11} strokeWidth={1.5} aria-hidden="true"/>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold leading-none">Trial Pro</p>
+                <p className="text-[9px] mt-0.5 opacity-80">{trialDaysLeft} jour{trialDaysLeft > 1 ? 's' : ''} restant{trialDaysLeft > 1 ? 's' : ''}</p>
+              </div>
+              <Zap size={10} aria-hidden="true"/>
+            </Link>
+          ) : isPaid ? (
+            <div className={cn(
+              'flex items-center gap-2 px-2.5 py-1.5 rounded text-[11px]',
+              'bg-[var(--fin-green-bg)] text-[var(--fin-green)]',
+              'border border-[var(--fin-green)] border-opacity-20'
+            )}>
+              <Crown size={11} strokeWidth={1.5} aria-hidden="true"/>
+              <span className="font-semibold flex-1">Plan {plan}</span>
+              <span className="text-[9px] opacity-70">actif</span>
+            </div>
+          ) : (
+            <Link href="/billing" className={cn(
+              'flex items-center gap-2 px-2.5 py-1.5 rounded text-[11px] transition-all',
+              'bg-[var(--fin-green-bg)] text-[var(--fin-green)]',
+              'border border-[var(--fin-green)] border-opacity-25 hover:border-opacity-50',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fin-green)]'
+            )}>
+              <CreditCard size={11} strokeWidth={1.5} aria-hidden="true"/>
+              <span className="font-semibold flex-1">Passer à Pro</span>
+            </Link>
+          )}
+
+          <p className="text-[9px] text-[var(--fin-t3)] font-mono text-center leading-relaxed">
+            ⌘K Palette · ⌘1–7 Nav
+          </p>
+        </div>
+      </aside>
     </>
   )
 }

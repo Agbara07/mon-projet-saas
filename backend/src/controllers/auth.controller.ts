@@ -1,8 +1,21 @@
 import { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import { z } from 'zod'
 import prisma from '../config/prisma'
 import { TRIAL_DURATION_DAYS } from '../config/plan-limits'
+
+const registerSchema = z.object({
+  email:   z.string().email('Email invalide'),
+  password: z.string().min(8, 'Mot de passe : 8 caractères minimum'),
+  name:    z.string().min(1, 'Nom requis').max(100),
+  orgName: z.string().min(1, 'Nom organisation requis').max(100),
+})
+
+const loginSchema = z.object({
+  email:    z.string().email('Email invalide'),
+  password: z.string().min(1, 'Mot de passe requis'),
+})
 
 const signAccess = (userId: string, orgId: string, role: string) =>
   jwt.sign({ userId, orgId, role }, process.env.JWT_SECRET!, { expiresIn: '15m' } as jwt.SignOptions)
@@ -11,7 +24,11 @@ const signRefresh = (userId: string) =>
   jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET!, { expiresIn: '7d' } as jwt.SignOptions)
 
 export const register = async (req: Request, res: Response) => {
-  const { email, password, name, orgName } = req.body
+  const parsed = registerSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({ message: parsed.error.errors[0].message, errors: parsed.error.errors })
+  }
+  const { email, password, name, orgName } = parsed.data
   const hashed = await bcrypt.hash(password, 10)
   const slug = orgName.toLowerCase().replace(/\s+/g, '-')
 
@@ -40,7 +57,11 @@ export const register = async (req: Request, res: Response) => {
 }
 
 export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body
+  const parsed = loginSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({ message: parsed.error.errors[0].message })
+  }
+  const { email, password } = parsed.data
   const user = await prisma.user.findUnique({ where: { email } })
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ message: 'Identifiants invalides' })

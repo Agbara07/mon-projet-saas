@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import prisma from '../config/prisma'
-import { getQuotes } from '../services/market.service'
+import { marketRouter } from '../services/market/market-router'
 import { AuthRequest } from '../middlewares/auth.middleware'
 
 export const getWatchlist = async (req: AuthRequest, res: Response) => {
@@ -13,7 +13,7 @@ export const getWatchlist = async (req: AuthRequest, res: Response) => {
 
     let qmap: Record<string, any> = {}
     try {
-      const quotes = await getQuotes(items.map((i) => i.symbol))
+      const quotes = await marketRouter.getQuotes(items.map((i) => i.symbol))
       qmap = Object.fromEntries(quotes.map((q) => [q.symbol, q]))
     } catch { /* retourne sans quotes si Yahoo Finance échoue */ }
 

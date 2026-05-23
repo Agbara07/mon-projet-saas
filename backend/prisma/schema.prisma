@@ -103,6 +103,7 @@ model Holding {
   transactions Transaction[]
 
   @@unique([portfolioId, symbol])
+  @@index([symbol])
 }
 
 model Transaction {
@@ -133,6 +134,10 @@ model Alert {
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([symbol])
+  @@index([active])
 }
 
 enum TransactionType {
@@ -161,6 +166,7 @@ model WatchlistItem {
   user   User   @relation(fields: [userId], references: [id])
 
   @@unique([userId, symbol])
+  @@index([userId])
 }
 
 model StockNote {

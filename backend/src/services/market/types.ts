@@ -101,9 +101,12 @@ export interface ScreenerFilters {
   minPrice?:         number
   maxPrice?:         number
   minMarketCap?:     number
+  maxMarketCap?:     number
   maxPE?:            number
+  minPE?:            number
   minChangePercent?: number
   maxChangePercent?: number
+  minVolume?:        number
   sector?:           string
   exchange?:         string
 }

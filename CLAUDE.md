@@ -117,6 +117,8 @@ Commandes slash disponibles dans ce projet — invoquer avec `/nom` dans Claude 
 | 10 | TMX Group      | 10       | Bourse TSX (Canada), événements      | `TMX_API_KEY`            |
 | 11 | ETF Global     | 11       | ETF holdings, secteurs, performance  | `ETF_GLOBAL_API_KEY`     |
 | 12 | BRVM           | 12       | Marché UEMOA (Afrique de l'Ouest)    | aucune (données pub.)    |
+| 13 | FMP            | 13       | Fondamentaux 30 ans, DCF, bilans     | `FMP_API_KEY`            |
+| 14 | FRED           | —        | Macro US : Fed, CPI, chômage, PIB    | `FRED_API_KEY` (gratuit) |
 
 **Routing par type de donnée** (défini dans `market-router.ts`) :
 - `quote` → finnhub, twelvedata, polygon, iex, eodhd, alphavantage, marketstack, marketdata
@@ -158,7 +160,37 @@ GET /:symbol/technical?period=3mo
 GET /:symbol/ratings           → analyst ratings (Benzinga)
 GET /:symbol/events            → événements corporate (TMX)
 GET /:symbol/tsx               → cotation TSX en CAD
+
+GET /:symbol/fundamentals      → bilans complets 10 ans + DCF (FMP)
+GET /:symbol/dcf               → valorisation DCF + % upside (FMP)
+GET /:symbol/income-statements → compte de résultats (FMP)
+GET /:symbol/balance-sheets    → bilans (FMP)
+GET /:symbol/cash-flows        → cash flows (FMP)
 ```
+
+## Pages frontend (`/stock/[symbol]`) — Terminal View
+
+Page de détail d'une action — accessible depuis screener, watchlist, liens `href="/stock/:symbol"`.
+
+**Structure :**
+- Status bar : breadcrumb Screener ← SYMBOL, boutons watchlist + alerte
+- Header : prix, variation, volume, market cap, P/E, beta, range 52 semaines (barre de progression)
+- Chart : lightweight-charts v5, périodes 1J/5J/1M/3M/1Y/5Y, sans SMA/EMA (dans l'onglet Technique)
+- Onglets :
+  - **Vue d'ensemble** : description, infos société, ratios, DCF FMP
+  - **Fondamentaux** : income/balance/cashflow 5 ans (FMP) — sub-tabs
+  - **Technique** : chart avec SMA/EMA/Bollinger + signaux calculés localement
+  - **Actualités** : news Benzinga avec badge sentiment
+
+**Fichiers :**
+- `frontend/src/app/(dashboard)/stock/[symbol]/page.tsx` — page principale
+- `frontend/src/app/(dashboard)/stock/[symbol]/components/StockChart.tsx`
+- `frontend/src/app/(dashboard)/stock/[symbol]/components/OverviewTab.tsx`
+- `frontend/src/app/(dashboard)/stock/[symbol]/components/FundamentalsTab.tsx`
+- `frontend/src/app/(dashboard)/stock/[symbol]/components/NewsTab.tsx`
+- `frontend/src/app/(dashboard)/stock/[symbol]/components/TechnicalTab.tsx`
+
+**Note :** L'ancienne page `/app/stock/[symbol]/page.tsx` (hors dashboard, sans sidebar/auth) a été supprimée le 23/05/2026 — elle était en conflit de route.
 
 ## Conventions de code
 

@@ -110,7 +110,8 @@ export default function CalendarPage() {
                   <th className="px-3 py-1.5 text-right text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--fin-t3)] w-28">EPS ESTIMÉ</th>
                   <th className="px-3 py-1.5 text-right text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--fin-t3)] w-28">EPS RÉEL</th>
                   <th className="px-3 py-1.5 text-right text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--fin-t3)] w-28">SURPRISE</th>
-                  <th className="px-3 py-1.5 w-20"/>
+                  <th className="px-3 py-1.5 text-center text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--fin-t3)] w-24">VERDICT</th>
+                  <th className="px-3 py-1.5 w-8"/>
                 </tr>
               </thead>
             </table>
@@ -143,8 +144,17 @@ export default function CalendarPage() {
                     <table className="w-full">
                       <tbody>
                         {dayEvents.map((e, i) => {
-                          const beat   = e.epsActual != null && e.epsEstimate != null && e.epsActual >= e.epsEstimate
-                          const hasRes = e.epsActual != null
+                          const hasRes = e.epsActual != null && e.epsEstimate != null
+                          const pct    = e.surprisePct ?? 0
+                          const verdict = hasRes
+                            ? (Math.abs(pct) < 1 ? 'inline' : pct > 0 ? 'beat' : 'miss')
+                            : null
+                          const verdictStyle = {
+                            beat:   'bg-[var(--fin-green-bg)] text-[var(--fin-green)]',
+                            miss:   'bg-[var(--fin-red-bg)] text-[var(--fin-red)]',
+                            inline: 'bg-[var(--fin-hover)] text-[var(--fin-t3)]',
+                          }
+                          const verdictLabel = { beat:'▲ BEAT', miss:'▼ MISS', inline:'─ IN LINE' }
                           return (
                             <motion.tr key={e.symbol}
                               initial={{opacity:0}} animate={{opacity:1}} transition={{delay:i*0.02}}
@@ -155,7 +165,9 @@ export default function CalendarPage() {
                                 </span>
                               </td>
                               <td className="px-3 py-2">
-                                <span className="font-mono font-bold text-xs text-[var(--fin-t1)]">{e.symbol}</span>
+                                <Link href={`/stock/${e.symbol}`} className="font-mono font-bold text-xs text-[var(--fin-t1)] hover:text-[var(--fin-blue)] transition-colors">
+                                  {e.symbol}
+                                </Link>
                               </td>
                               <td className="px-3 py-2">
                                 <span className="text-[10px] text-[var(--fin-t2)] truncate max-w-[180px] block">{e.company}</span>
@@ -167,28 +179,42 @@ export default function CalendarPage() {
                                 }
                               </td>
                               <td className="px-3 py-2 text-right font-mono text-xs tabular-nums">
-                                {hasRes
-                                  ? <span className={beat?'text-[var(--fin-green)]':'text-[var(--fin-red)]'}>${e.epsActual!.toFixed(2)}</span>
+                                {e.epsActual != null
+                                  ? <span className={verdict==='beat'?'text-[var(--fin-green)]':verdict==='miss'?'text-[var(--fin-red)]':'text-[var(--fin-t2)]'}>
+                                      ${e.epsActual.toFixed(2)}
+                                    </span>
                                   : <span className="text-[var(--fin-t3)]">—</span>
                                 }
                               </td>
                               <td className="px-3 py-2 text-right">
                                 {e.surprisePct != null ? (
                                   <span className={cn(
-                                    'inline-flex items-center gap-0.5 font-mono text-xs font-bold tabular-nums',
-                                    e.surprisePct>=0?'text-[var(--fin-green)]':'text-[var(--fin-red)]'
+                                    'font-mono text-[10px] font-bold tabular-nums',
+                                    pct > 0 ? 'text-[var(--fin-green)]' : pct < 0 ? 'text-[var(--fin-red)]' : 'text-[var(--fin-t3)]'
                                   )}>
-                                    {e.surprisePct>=0?<TrendingUp size={10} strokeWidth={1.5}/>:<TrendingDown size={10} strokeWidth={1.5}/>}
-                                    {e.surprisePct>=0?'+':''}{e.surprisePct.toFixed(1)}%
+                                    {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
                                   </span>
                                 ) : (
                                   <span className="font-mono text-[10px] text-[var(--fin-t3)]">—</span>
                                 )}
                               </td>
+                              {/* BEAT / MISS / IN LINE badge */}
+                              <td className="px-3 py-2 text-center w-24">
+                                {verdict ? (
+                                  <span className={cn(
+                                    'inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold font-mono',
+                                    verdictStyle[verdict]
+                                  )}>
+                                    {verdictLabel[verdict]}
+                                  </span>
+                                ) : isFuture ? (
+                                  <span className="text-[8px] font-mono text-[var(--fin-t3)]">À VENIR</span>
+                                ) : null}
+                              </td>
                               <td className="px-3 py-2">
                                 <Link href={`/stock/${e.symbol}`}
                                   className="flex items-center justify-end gap-0.5 text-[9px] text-[var(--fin-t3)] hover:text-[var(--fin-blue)] opacity-0 group-hover:opacity-100 transition-all">
-                                  Profil <ArrowUpRight size={9} strokeWidth={1.5}/>
+                                  <ArrowUpRight size={9} strokeWidth={1.5}/>
                                 </Link>
                               </td>
                             </motion.tr>

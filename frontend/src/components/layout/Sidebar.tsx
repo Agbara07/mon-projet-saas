@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, BarChart3, Eye, Search,
   CalendarDays, Bell, CreditCard, Settings, Shield,
-  TrendingUp, Globe, X, Clock, Zap, Crown,
+  TrendingUp, Globe, X, Clock, Zap, Crown, BarChart2,
 } from 'lucide-react'
 import type { CurrentUser } from '@/hooks/useCurrentUser'
 
@@ -19,6 +19,7 @@ const NAV = [
   { href:'/calendar',  label:'Calendrier', Icon:CalendarDays,     key:'5', shortcut:'Ctrl+5' },
   { href:'/alerts',    label:'Alertes',    Icon:Bell,             key:'6', shortcut:'Ctrl+6' },
   { href:'/brvm',      label:'BRVM',       Icon:Globe,            key:'7', shortcut:'Ctrl+7' },
+  { href:'/macro',     label:'Macro',      Icon:BarChart2,        key:'8', shortcut:'Ctrl+8' },
 ]
 
 const NAV_BOTTOM = [

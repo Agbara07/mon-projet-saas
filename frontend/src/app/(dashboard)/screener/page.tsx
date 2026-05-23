@@ -19,15 +19,36 @@ interface StockResult {
   changePercent:number; volume:number; marketCap?:number
   pe?:number; week52High?:number; week52Low?:number; currency:string
 }
-interface Filters { minPrice:string; maxPrice:string; minMarketCap:string; maxPE:string; minChangePercent:string; maxChangePercent:string }
+interface Filters {
+  minPrice:string; maxPrice:string
+  minMarketCap:string; maxMarketCap:string
+  minPE:string; maxPE:string
+  minChangePercent:string; maxChangePercent:string
+  minVolume:string; sector:string
+}
 
-const EMPTY: Filters = { minPrice:'', maxPrice:'', minMarketCap:'', maxPE:'', minChangePercent:'', maxChangePercent:'' }
+const EMPTY: Filters = {
+  minPrice:'', maxPrice:'',
+  minMarketCap:'', maxMarketCap:'',
+  minPE:'', maxPE:'',
+  minChangePercent:'', maxChangePercent:'',
+  minVolume:'', sector:'',
+}
+
+const SECTORS = [
+  'Technology','Healthcare','Financials','Consumer Discretionary',
+  'Consumer Staples','Energy','Industrials','Materials','Real Estate','Utilities',
+]
+
+const PAGE_SIZE = 50
 
 const PRESETS = [
-  { label:'TOP GAINERS',  tag:'+2%↑',  color:'text-[var(--fin-green)]', bg:'bg-[var(--fin-green-bg)]', filters:{ ...EMPTY, minChangePercent:'2' } },
-  { label:'TOP LOSERS',   tag:'-2%↓',  color:'text-[var(--fin-red)]',   bg:'bg-[var(--fin-red-bg)]',   filters:{ ...EMPTY, maxChangePercent:'-2' } },
+  { label:'TOP GAINERS',  tag:'+2%↑',   color:'text-[var(--fin-green)]', bg:'bg-[var(--fin-green-bg)]', filters:{ ...EMPTY, minChangePercent:'2' } },
+  { label:'TOP LOSERS',   tag:'-2%↓',   color:'text-[var(--fin-red)]',   bg:'bg-[var(--fin-red-bg)]',   filters:{ ...EMPTY, maxChangePercent:'-2' } },
   { label:'VALUE',        tag:'P/E<15', color:'text-[var(--fin-amber)]', bg:'bg-[var(--fin-amber-bg)]', filters:{ ...EMPTY, maxPE:'15', minMarketCap:'10000000000' } },
-  { label:'LARGE CAPS',   tag:'>100B',  color:'text-[var(--fin-blue)]',  bg:'bg-[var(--fin-blue-bg)]',  filters:{ ...EMPTY, minMarketCap:'100000000000' } },
+  { label:'LARGE CAPS',  tag:'>100B',  color:'text-[var(--fin-blue)]',  bg:'bg-[var(--fin-blue-bg)]',  filters:{ ...EMPTY, minMarketCap:'100000000000' } },
+  { label:'SMALL CAPS',  tag:'<10B',   color:'text-[var(--fin-amber)]', bg:'bg-[var(--fin-amber-bg)]', filters:{ ...EMPTY, maxMarketCap:'10000000000' } },
+  { label:'HIGH VOLUME', tag:'>50M',   color:'text-[var(--fin-green)]', bg:'bg-[var(--fin-green-bg)]', filters:{ ...EMPTY, minVolume:'50000000' } },
 ]
 
 function fmt(n?: number) {
@@ -61,9 +82,10 @@ export default function ScreenerPage() {
   const [sortDir,      setSortDir]     = useState<SortDir>('desc')
   const [showFilters,  setShowFilters] = useState(false)
   const [watchlist,    setWatchlist]   = useState<Set<string>>(new Set())
+  const [page,         setPage]        = useState(1)
 
   const runScreener = async (overrides?: Partial<Filters>) => {
-    setLoading(true); setRan(true)
+    setLoading(true); setRan(true); setPage(1)
     const f = { ...filters, ...overrides }
     const params = new URLSearchParams()
     Object.entries(f).forEach(([k,v]) => { if (v !== '') params.set(k, v) })
@@ -83,6 +105,20 @@ export default function ScreenerPage() {
     const va = (a[sortKey]??0) as number, vb = (b[sortKey]??0) as number
     return sortDir==='desc' ? vb-va : va-vb
   })
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  const paginated  = sorted.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE)
+
+  const exportCSV = () => {
+    const header = COLS.map(c => c.label).join(',')
+    const rows = sorted.map(s =>
+      [s.symbol, s.name, s.price, s.changePercent, s.volume, s.marketCap??'', s.pe??'', s.week52High??'', s.week52Low??''].join(',')
+    )
+    const csv = [header, ...rows].join('\n')
+    const blob = new Blob([csv], { type:'text/csv' })
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
+    a.download = `screener-${new Date().toISOString().slice(0,10)}.csv`; a.click()
+  }
 
   const toggleWatchlist = async (s: StockResult) => {
     if (watchlist.has(s.symbol)) {
@@ -121,6 +157,12 @@ export default function ScreenerPage() {
             <span className="text-[var(--fin-t1)] font-bold">{sorted.length}</span> résultat{sorted.length>1?'s':''}
           </span>
         )}
+        {ran && sorted.length > 0 && (
+          <button onClick={exportCSV}
+            className="flex items-center gap-1 h-6 px-2 rounded text-[9px] text-[var(--fin-t3)] hover:text-[var(--fin-t1)] hover:bg-[var(--fin-hover)] border border-[var(--fin-border)] transition-colors">
+            ↓ CSV
+          </button>
+        )}
         <div className="w-px h-3.5 bg-[var(--fin-border)]"/>
         <button onClick={() => setShowFilters(v => !v)}
           className={cn(
@@ -152,14 +194,34 @@ export default function ScreenerPage() {
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+
+                {/* Sector dropdown */}
+                <div>
+                  <label className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-wide block mb-1">Secteur</label>
+                  <select
+                    value={filters.sector}
+                    onChange={e => setFilters(p => ({...p, sector:e.target.value}))}
+                    className={cn(
+                      'w-full h-7 px-2 text-xs font-mono rounded border transition-colors appearance-none',
+                      'bg-[var(--fin-panel)] border-[var(--fin-border)] text-[var(--fin-t1)]',
+                      'focus:outline-none focus:border-[var(--fin-blue)]',
+                    )}>
+                    <option value="">Tous les secteurs</option>
+                    {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+
                 {[
-                  { key:'minPrice',         label:'Prix min ($)' },
-                  { key:'maxPrice',         label:'Prix max ($)' },
-                  { key:'minMarketCap',     label:'Cap. min ($)' },
-                  { key:'maxPE',            label:'P/E max' },
-                  { key:'minChangePercent', label:'Var. min (%)' },
-                  { key:'maxChangePercent', label:'Var. max (%)' },
+                  { key:'minPrice',         label:'Prix min ($)',  type:'number' },
+                  { key:'maxPrice',         label:'Prix max ($)',  type:'number' },
+                  { key:'minMarketCap',     label:'Cap. min ($)',  type:'number' },
+                  { key:'maxMarketCap',     label:'Cap. max ($)',  type:'number' },
+                  { key:'minPE',            label:'P/E min',       type:'number' },
+                  { key:'maxPE',            label:'P/E max',       type:'number' },
+                  { key:'minChangePercent', label:'Var. min (%)',  type:'number' },
+                  { key:'maxChangePercent', label:'Var. max (%)',  type:'number' },
+                  { key:'minVolume',        label:'Volume min',    type:'number' },
                 ].map(({ key, label }) => (
                   <div key={key}>
                     <label className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-wide block mb-1">{label}</label>
@@ -219,7 +281,7 @@ export default function ScreenerPage() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((s, i) => {
+              {paginated.map((s, i) => {
                 const up = s.changePercent >= 0
                 const inWl = watchlist.has(s.symbol)
                 return (
@@ -286,6 +348,26 @@ export default function ScreenerPage() {
             <span className="text-[var(--fin-t1)] font-bold">{sorted.length}</span> action{sorted.length>1?'s':''} · trié par <span className="text-[var(--fin-blue)] font-bold">{sortKey.toUpperCase()}</span> {sortDir==='desc'?'↓':'↑'}
           </span>
           {activeCount > 0 && <span className="text-[9px] font-mono text-[var(--fin-amber)]">{activeCount} filtre{activeCount>1?'s':''} actif{activeCount>1?'s':''}</span>}
+          <div className="flex-1"/>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage(p => p-1)}
+                className="h-5 px-2 rounded text-[9px] font-mono border border-[var(--fin-border)] text-[var(--fin-t3)] hover:bg-[var(--fin-hover)] disabled:opacity-30 transition-colors">
+                ‹
+              </button>
+              <span className="text-[9px] font-mono text-[var(--fin-t3)] px-1">
+                {page} / {totalPages}
+              </span>
+              <button
+                disabled={page >= totalPages}
+                onClick={() => setPage(p => p+1)}
+                className="h-5 px-2 rounded text-[9px] font-mono border border-[var(--fin-border)] text-[var(--fin-t3)] hover:bg-[var(--fin-hover)] disabled:opacity-30 transition-colors">
+                ›
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -202,20 +202,79 @@ export class MarketRouter {
   }
 
   async screenStocks(filters: ScreenerFilters): Promise<Quote[]> {
+    // 85 symboles couvrant tous les secteurs (S&P500 + Europe top caps)
     const SYMBOLS = [
-      'AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','JPM','V','JNJ',
-      'WMT','PG','MA','UNH','HD','BAC','XOM','CVX','ASML','SAP',
-      'LVMH.PA','TTE.PA','SIE.DE','BNP.PA','OR.PA',
+      // Technology
+      'AAPL','MSFT','NVDA','GOOGL','META','TSLA','AVGO','ORCL','CRM','AMD',
+      'INTC','QCOM','TXN','AMAT','MU','LRCX','NOW','ADBE','INTU','PANW',
+      // Healthcare
+      'JNJ','UNH','LLY','ABT','MRK','TMO','DHR','ISRG','MDT','BMY',
+      // Financials
+      'JPM','BAC','WFC','GS','MS','BLK','SPGI','CB','AXP','V','MA',
+      // Consumer Discretionary
+      'AMZN','HD','MCD','NKE','SBUX','TGT','LOW','BKNG','CMG',
+      // Consumer Staples
+      'WMT','PG','KO','PEP','COST','PM','MO',
+      // Energy
+      'XOM','CVX','COP','EOG','SLB','PSX',
+      // Industrials
+      'CAT','BA','HON','UPS','RTX','LMT','GE','MMM',
+      // Materials
+      'LIN','APD','SHW','FCX','NEM',
+      // Real Estate
+      'AMT','PLD','EQIX','CCI',
+      // Utilities
+      'NEE','DUK','SO',
+      // Europe top caps
+      'ASML','SAP','LVMH.PA','TTE.PA','SIE.DE','BNP.PA','OR.PA','NESN.SW','NOVO-B.CO',
     ]
+
+    // Carte sectorielle statique — utilisée uniquement pour le filtre sector
+    const SECTOR_MAP: Record<string, string> = {
+      AAPL:'Technology', MSFT:'Technology', NVDA:'Technology', GOOGL:'Technology',
+      META:'Technology', AVGO:'Technology', ORCL:'Technology', CRM:'Technology',
+      AMD:'Technology', INTC:'Technology', QCOM:'Technology', TXN:'Technology',
+      AMAT:'Technology', MU:'Technology', LRCX:'Technology', NOW:'Technology',
+      ADBE:'Technology', INTU:'Technology', PANW:'Technology', TSLA:'Technology',
+      JNJ:'Healthcare', UNH:'Healthcare', LLY:'Healthcare', ABT:'Healthcare',
+      MRK:'Healthcare', TMO:'Healthcare', DHR:'Healthcare', ISRG:'Healthcare',
+      MDT:'Healthcare', BMY:'Healthcare',
+      JPM:'Financials', BAC:'Financials', WFC:'Financials', GS:'Financials',
+      MS:'Financials', BLK:'Financials', SPGI:'Financials', CB:'Financials',
+      AXP:'Financials', V:'Financials', MA:'Financials',
+      AMZN:'Consumer Discretionary', HD:'Consumer Discretionary', MCD:'Consumer Discretionary',
+      NKE:'Consumer Discretionary', SBUX:'Consumer Discretionary', TGT:'Consumer Discretionary',
+      LOW:'Consumer Discretionary', BKNG:'Consumer Discretionary', CMG:'Consumer Discretionary',
+      WMT:'Consumer Staples', PG:'Consumer Staples', KO:'Consumer Staples',
+      PEP:'Consumer Staples', COST:'Consumer Staples', PM:'Consumer Staples', MO:'Consumer Staples',
+      XOM:'Energy', CVX:'Energy', COP:'Energy', EOG:'Energy', SLB:'Energy', PSX:'Energy',
+      CAT:'Industrials', BA:'Industrials', HON:'Industrials', UPS:'Industrials',
+      RTX:'Industrials', LMT:'Industrials', GE:'Industrials', MMM:'Industrials',
+      LIN:'Materials', APD:'Materials', SHW:'Materials', FCX:'Materials', NEM:'Materials',
+      AMT:'Real Estate', PLD:'Real Estate', EQIX:'Real Estate', CCI:'Real Estate',
+      NEE:'Utilities', DUK:'Utilities', SO:'Utilities',
+      ASML:'Technology', SAP:'Technology', 'LVMH.PA':'Consumer Discretionary',
+      'TTE.PA':'Energy', 'SIE.DE':'Industrials', 'BNP.PA':'Financials',
+      'OR.PA':'Consumer Staples', 'NESN.SW':'Consumer Staples', 'NOVO-B.CO':'Healthcare',
+    }
+
     const quotes = await this.getQuotes(SYMBOLS)
     return quotes.filter(q => {
-      if (q.price <= 0)                                                    return false
-      if (filters.minPrice      && q.price         < filters.minPrice)     return false
-      if (filters.maxPrice      && q.price         > filters.maxPrice)     return false
-      if (filters.minMarketCap  && (q.marketCap??0)< filters.minMarketCap) return false
-      if (filters.maxPE         && q.pe!=null && q.pe > filters.maxPE)    return false
-      if (filters.minChangePercent && q.changePercent < filters.minChangePercent) return false
-      if (filters.maxChangePercent && q.changePercent > filters.maxChangePercent) return false
+      if (q.price <= 0)                                                           return false
+      if (filters.minPrice        && q.price            < filters.minPrice)       return false
+      if (filters.maxPrice        && q.price            > filters.maxPrice)       return false
+      if (filters.minMarketCap    && (q.marketCap??0)   < filters.minMarketCap)   return false
+      if (filters.maxMarketCap    && (q.marketCap??0)   > filters.maxMarketCap)   return false
+      if (filters.maxPE           && q.pe != null && q.pe > filters.maxPE)        return false
+      if (filters.minPE           && q.pe != null && q.pe < filters.minPE)        return false
+      if (filters.minChangePercent && q.changePercent   < filters.minChangePercent) return false
+      if (filters.maxChangePercent && q.changePercent   > filters.maxChangePercent) return false
+      if (filters.minVolume       && q.volume           < filters.minVolume)      return false
+      if (filters.sector) {
+        const sym = q.symbol.toUpperCase()
+        const stockSector = SECTOR_MAP[sym] ?? ''
+        if (!stockSector.toLowerCase().includes(filters.sector.toLowerCase())) return false
+      }
       return true
     })
   }

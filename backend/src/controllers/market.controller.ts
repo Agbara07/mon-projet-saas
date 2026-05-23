@@ -8,6 +8,7 @@ import {
   computeCommodityCorrelation, COMMODITY_MAP,
   simulateTransactionCost,
 } from '../services/market/providers/brvm-tools.provider'
+import { getUSMacroDashboard } from '../services/market/providers/fred.provider'
 import {
   getCacheStatus, refreshBRVMData,
 } from '../services/brvm-cron.service'
@@ -53,13 +54,18 @@ export const marketOverview = handle(async (_req, res) => {
 })
 
 export const screener = handle(async (req, res) => {
+  const n = (k: string) => req.query[k] ? +req.query[k]! : undefined
   const f: ScreenerFilters = {
-    minPrice:         req.query.minPrice         ? +req.query.minPrice         : undefined,
-    maxPrice:         req.query.maxPrice         ? +req.query.maxPrice         : undefined,
-    minMarketCap:     req.query.minMarketCap     ? +req.query.minMarketCap     : undefined,
-    maxPE:            req.query.maxPE            ? +req.query.maxPE            : undefined,
-    minChangePercent: req.query.minChangePercent ? +req.query.minChangePercent : undefined,
-    maxChangePercent: req.query.maxChangePercent ? +req.query.maxChangePercent : undefined,
+    minPrice:         n('minPrice'),
+    maxPrice:         n('maxPrice'),
+    minMarketCap:     n('minMarketCap'),
+    maxMarketCap:     n('maxMarketCap'),
+    maxPE:            n('maxPE'),
+    minPE:            n('minPE'),
+    minChangePercent: n('minChangePercent'),
+    maxChangePercent: n('maxChangePercent'),
+    minVolume:        n('minVolume'),
+    sector:           req.query.sector as string | undefined,
   }
   res.json(await marketRouter.screenStocks(f))
 })
@@ -263,6 +269,16 @@ export const brvmMarket = handle(async (_req, res) => {
 // Liste des sociétés cotées BRVM
 export const brvmCompanies = handle(async (_req, res) => {
   res.json((brvmProvider as any).getBRVMCompanies())
+})
+
+/* ── Macro-économique ───────────────────────────────────────── */
+
+export const macroUS = handle(async (_req, res) => {
+  res.json(await getUSMacroDashboard())
+})
+
+export const macroUEMOA = handle(async (_req, res) => {
+  res.json(getUEMOAMacroDashboard())
 })
 
 /* ── FMP — Données fondamentales ────────────────────────────── */

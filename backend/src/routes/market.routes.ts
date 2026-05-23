@@ -14,6 +14,7 @@ import {
   brvmAfricaComparison, brvmMacro,
   brvmGovernance, brvmTransactionCost,
   brvmCacheStatus, brvmRefresh,
+  macroUS, macroUEMOA,
 } from '../controllers/market.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 
@@ -79,6 +80,10 @@ router.get('/:symbol/technical',         technicalIndicators)
 router.get('/:symbol/ratings',           analystRatings)
 router.get('/:symbol/events',            corporateEvents)
 router.get('/:symbol/tsx',               tsxQuote)
+
+// ── Macro-économique ────────────────────────────────────────────
+router.get('/macro/us',    macroUS)    // Fed, CPI, chômage, 10Y, PIB — FRED API
+router.get('/macro/uemoa', macroUEMOA) // BCEAO, inflation UEMOA, PIB zone franc
 
 // ── FMP — Données fondamentales ────────────────────────────────
 router.get('/:symbol/fundamentals',      fundamentals)       // bilans complets 10 ans + estimations + DCF

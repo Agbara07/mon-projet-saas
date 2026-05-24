@@ -1,12 +1,69 @@
 # CLAUDE.md — InvestSaaS
 
+---
+
+## Engineering Operating System
+
+Règles opératoires permanentes — à appliquer avant chaque action.
+
+### Framework de pensée (obligatoire)
+
+Avant toute action, répondre :
+
+1. **WHY** — Quel est le vrai objectif ? Est-ce réellement nécessaire ?
+2. **WHAT** — Quel est le changement minimal correct ? Quels fichiers/modules sont impliqués ? Quelles contraintes ?
+3. **HOW** — Quel est le chemin le plus efficace ? La solution la moins complexe ? Celle qui évite la dette technique ?
+
+### Règles d'exécution
+
+- **Think first, code second** — inspecter l'architecture, comprendre les patterns existants, identifier dépendances et risques avant tout edit
+- **Pas d'edits aveugles** — toujours comprendre le contexte avant de modifier
+- **Règle des 2 tentatives** — si 2 implémentations échouent : stop, réévaluer les hypothèses, identifier la cause racine, proposer une stratégie alternative. Ne jamais brute-forcer
+- **Suivre les patterns existants** — ne pas introduire de nouveaux patterns, abstractions ou dépendances sans justification explicite
+
+### Discipline token / efficacité
+
+Ne pas :
+- répéter le même raisonnement
+- re-scanner des fichiers inchangés
+- générer de larges outputs inutiles
+- sur-expliquer des concepts simples
+- boucler sur des approches déjà échouées
+
+### Standards de code
+
+- Production-ready : error handling, typé, pas de dead code, pas de duplication
+- Commentaires expliquent le **POURQUOI**, pas le QUOI
+- Avant édition : vérifier imports, types, build, effets de bord
+
+### Priorités de décision
+
+Quand plusieurs solutions existent : **correction → maintenabilité → simplicité → performance → vitesse**
+
+### Gestion des échecs
+
+Quand bloqué : **stop → résumer la compréhension → identifier les inconnues → proposer la prochaine meilleure action**. Pas d'expérimentation aléatoire.
+
+### Checklist finale (avant de clore une tâche)
+
+- [ ] Le problème est-il réellement résolu ?
+- [ ] La solution est-elle minimale ?
+- [ ] L'architecture est-elle cohérente ?
+- [ ] Le code est-il maintenable ?
+- [ ] La dette technique est-elle minimisée ?
+- [ ] Les cas limites sont-ils gérés ?
+- [ ] L'implémentation est-elle production-safe ?
+- [ ] Un senior engineer approuverait-il ce PR ?
+
+---
+
 Plateforme SaaS d'investissement boursier couvrant les marchés mondiaux (US, Europe, Canada, BRVM/Afrique de l'Ouest).
 
 ## Stack
 
 | Couche          | Technologie                                               |
 |-----------------|-----------------------------------------------------------|
-| Frontend        | Next.js 14 (App Router), TypeScript, Tailwind CSS         |
+| Frontend        | Next.js 15 (App Router), TypeScript, Tailwind CSS, React 19 |
 | Backend         | Node.js + Express, TypeScript                             |
 | Base de données | PostgreSQL + Prisma ORM                                   |
 | Auth            | JWT (access 15min + refresh 7j), bcryptjs                 |
@@ -84,6 +141,10 @@ Commandes slash disponibles dans ce projet — invoquer avec `/nom` dans Claude 
 | `/concepteur-ui-ux`         | Interfaces modernes, accessibles, performantes (Tailwind)   |
 | `/analyst-wallstreet`       | Analyse financière, pricing, API data, arbitrage coût/perf  |
 | `/expert-brvm`              | Marché BRVM/UEMOA, données africaines, modélisation FCFA    |
+| `/risk-bear-analyst`        | Red Team / Avocat du Diable — SPOF, stress test, pre-mortem |
+| `/decision-engineer`        | Arbitre stratégique — tranche GO/NO-GO après débat          |
+| `/financial-controller-quant` | Audit mathématique, RSI/MACD, intégrité données, comptabilité SYSCOHADA |
+| `/compliance-legal-officer` | Droit FinTech, AMF-UMOA, RGPD, licences APIs, KYC/AML       |
 
 ## Règles de déclenchement automatique des skills
 
@@ -100,6 +161,10 @@ Commandes slash disponibles dans ce projet — invoquer avec `/nom` dans Claude 
 | "Est-ce que tout marche ?", environnement local                     | `/verifier-sante`           |
 | Nouvelle page, composant UI, design                                 | `/concepteur-ui-ux`         |
 | Ambiguïté dans une demande, besoin flou                             | `/clarifier-besoin`         |
+| Risque d'infra, SPOF, panne, coût serveur, stress test              | `/risk-bear-analyst`        |
+| Arbitrage GO/NO-GO, synthèse après débat analytique                 | `/decision-engineer`        |
+| Formule mathématique, RSI/MACD, backtest, comptabilité SYSCOHADA    | `/financial-controller-quant` |
+| Conformité, RGPD, AMF-UMOA, licence API, KYC, conseil illégal       | `/compliance-legal-officer` |
 
 ## Providers de données de marché (12 au total)
 

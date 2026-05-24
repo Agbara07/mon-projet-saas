@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import DashboardPage from './page'
 import api from '@/lib/api'
 
@@ -36,21 +36,17 @@ describe('DashboardPage', () => {
     jest.useRealTimers()
   })
 
-  it('affiche le spinner de chargement puis le dashboard', async () => {
+  it('affiche le dashboard immédiatement sans spinner bloquant', async () => {
     const { container } = render(<DashboardPage />)
-    expect(container.querySelector('.animate-spin')).toBeInTheDocument()
-
-    await act(async () => {})
-
+    // Le dashboard est directement visible — les sections ont leurs propres skeletons
     expect(container.querySelector('.animate-spin')).not.toBeInTheDocument()
-    expect(screen.getByText(/Acme Capital/i)).toBeInTheDocument()
+
+    // Les données utilisateur apparaissent dès que la promesse résout
+    await waitFor(() => expect(screen.getByText(/Acme Capital/i)).toBeInTheDocument())
   })
 
   it("affiche le plan de l'organisation", async () => {
     render(<DashboardPage />)
-
-    await act(async () => {})
-
-    expect(screen.getByText('PRO')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('PRO')).toBeInTheDocument())
   })
 })

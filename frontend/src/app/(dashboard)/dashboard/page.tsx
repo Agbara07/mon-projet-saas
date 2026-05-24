@@ -1,10 +1,8 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
-import { motion, useInView } from 'framer-motion'
+import { useEffect, useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import {
-  TrendingUp, TrendingDown, BarChart3,
   Calendar, Eye, ArrowRight, Zap, Activity,
   Clock, WifiOff,
 } from 'lucide-react'

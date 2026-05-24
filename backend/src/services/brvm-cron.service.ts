@@ -143,6 +143,18 @@ export interface RefreshResult {
   marketOpen: boolean
 }
 
+async function saveDailySnapshots(quotes: any[]): Promise<void> {
+  const today = new Date().toISOString().split('T')[0]
+  const ops = quotes
+    .filter(q => q.symbol && typeof q.price === 'number' && q.price > 0)
+    .map(q => prisma.bRVMPriceHistory.upsert({
+      where:  { symbol_date: { symbol: q.symbol, date: today } },
+      update: { close: q.price, volume: q.volume ?? 0 },
+      create: { symbol: q.symbol, date: today, close: q.price, volume: q.volume ?? 0 },
+    }))
+  if (ops.length > 0) await Promise.allSettled(ops)
+}
+
 export async function refreshBRVMData(): Promise<RefreshResult> {
   const t0 = Date.now()
   const sources = [
@@ -159,6 +171,7 @@ export async function refreshBRVMData(): Promise<RefreshResult> {
           update: { data: data as any, source: name, itemCount: data.length },
           create: { id: CACHE_KEY, data: data as any, source: name, itemCount: data.length },
         })
+        await saveDailySnapshots(data)
         const ms = Date.now() - t0
         console.log(`[BRVM cron] ✅ ${data.length} quotes — source: ${name} — ${ms}ms`)
         return { success: true, source: name, count: data.length, durationMs: ms, marketOpen: isMarketOpen() }

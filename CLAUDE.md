@@ -76,17 +76,28 @@ Plateforme SaaS d'investissement boursier couvrant les marchés mondiaux (US, Eu
 ```
 mon-projet-saas/
 ├── .claude/
-│   └── commands/              # Skills Claude Code projet (8 commandes slash)
-│       ├── audit-securite.md
-│       ├── analyse-architecture-360.md
-│       ├── clarifier-besoin.md
-│       ├── deployer-prod.md
-│       ├── planifier-architecture.md
-│       ├── tester-et-deboguer.md
-│       ├── verifier-sante.md
-│       └── concepteur-ui-ux.md
+│   ├── commands/              # Skills Claude Code projet (14 commandes slash)
+│   │   ├── audit-securite.md
+│   │   ├── analyse-architecture-360.md
+│   │   ├── clarifier-besoin.md
+│   │   ├── deployer-prod.md
+│   │   ├── planifier-architecture.md
+│   │   ├── tester-et-deboguer.md
+│   │   ├── verifier-sante.md
+│   │   ├── concepteur-ui-ux.md
+│   │   ├── analyst-wallstreet.md
+│   │   ├── expert-brvm.md
+│   │   ├── risk-bear-analyst.md
+│   │   ├── decision-engineer.md
+│   │   ├── financial-controller-quant.md
+│   │   └── compliance-legal-officer.md
+│   └── skills/
+│       └── ui-ux-pro-max/     # Community skill — 161 règles, 67 styles, 161 palettes
+│           ├── SKILL.md
+│           ├── data/          # 20 CSV (colors, styles, typography, charts, ux-guidelines…)
+│           └── scripts/       # search.py, design_system.py (Python 3.14 requis)
 │
-├── frontend/                  # Next.js 14 (App Router)
+├── frontend/                  # Next.js 15 (App Router)
 │   ├── .env.local             # Variables locales (gitignored)
 │   └── src/
 │       ├── app/(dashboard)/   # Pages protégées (layout avec sidebar)
@@ -166,7 +177,7 @@ Commandes slash disponibles dans ce projet — invoquer avec `/nom` dans Claude 
 | Formule mathématique, RSI/MACD, backtest, comptabilité SYSCOHADA    | `/financial-controller-quant` |
 | Conformité, RGPD, AMF-UMOA, licence API, KYC, conseil illégal       | `/compliance-legal-officer` |
 
-## Providers de données de marché (12 au total)
+## Providers de données de marché (14 au total)
 
 | #  | Nom            | Priorité | Spécialité                           | Clé env                  |
 |----|----------------|----------|--------------------------------------|--------------------------|
@@ -216,6 +227,20 @@ GET /brvm/market               → vue marché complète
 GET /brvm/companies            → liste sociétés cotées
 GET /brvm/:symbol/quote
 GET /brvm/:symbol/historical
+GET /brvm/:symbol/liquidity    → score liquidité Amihud
+GET /brvm/:symbol/dividend     → dividendes + Gordon fair value
+GET /brvm/:symbol/commodity    → corrélation matières premières
+
+GET /brvm/tools/liquidity      → tous les scores liquidité
+GET /brvm/tools/dividends      → screener dividendes BRVM
+GET /brvm/tools/commodities    → corrélations matières premières
+GET /brvm/tools/africa         → comparateur bourses africaines
+GET /brvm/tools/macro          → tableau de bord macro UEMOA/BCEAO
+GET /brvm/tools/governance     → scores de gouvernance
+POST /brvm/tools/cost          → simulateur coûts (barème CREPMF 2024)
+
+GET /macro/us                  → Fed, CPI, chômage, 10Y, PIB (FRED)
+GET /macro/uemoa               → BCEAO, inflation UEMOA, PIB zone franc
 
 GET /:symbol/quote
 GET /:symbol/historical?period=1mo
@@ -353,6 +378,14 @@ cd frontend && npm run dev     # port 3000
 
 <!-- Les entrées ci-dessous sont ajoutées automatiquement par Claude avant chaque compression de contexte -->
 
+### Session du 24/05/2026
+- Migration Next.js 14.2.35 → 15.5.18 + React 18 → 19 (0 changement de code, `remotePatterns` seule modif config, 14 CVEs résolues)
+- Engineering OS intégré dans CLAUDE.md (framework WHY/WHAT/HOW permanent)
+- Installé skill `ui-ux-pro-max` dans `.claude/skills/` — Python 3.14 disponible, scripts search.py opérationnels
+- Split `brvm-tools.provider.ts` (918 lignes) → 7 providers dédiés, routés, committés (`ac015ce`), déployés Railway
+- `dontAsk` mode retiré de `.claude/settings.local.json` → `defaultMode: default`
+- Créé `progress.md` et `handoff.md` à la racine du projet
+
 ### Session du 22/05/2026 — Autonome
 - Migré `node-cron` 3.x → 4.2.1 (CVE GHSA-w5hq-g745-h8pq corrigée)
 - Ajouté système freemium + trial 14j : `Plan` enum (FREE/STARTER/PRO/ADVISOR), `trialEndsAt` sur `Organization`, migration Prisma
@@ -383,4 +416,6 @@ cd frontend && npm run dev     # port 3000
 | Priorité | Tâche | Détail |
 |----------|-------|--------|
 | ✅ Fait | Migrer `node-cron` 3.x → 4.x | CVE GHSA-w5hq-g745-h8pq — corrigée le 21/05/2026 |
-| ⚪ Optionnel | Ajouter clés API providers | `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, etc. dans `.env` |
+| ✅ Fait | Migrer Next.js 14 → 15 + React 19 | 0 changement de code — 14 CVEs résolues le 24/05/2026 |
+| ✅ Fait | Router 7 providers BRVM | Committés + déployés Railway le 24/05/2026 |
+| 🔴 Prioritaire | Configurer clés API providers | 10 clés vides : `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, etc. dans `.env` + Railway |

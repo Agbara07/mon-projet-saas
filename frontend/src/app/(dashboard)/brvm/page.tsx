@@ -725,14 +725,25 @@ export default function BRVMPage() {
                   Array.from({length:8}).map((_,i) => <SkeletonRow key={i} cols={4}/>)
                 ) : commodities.length===0 ? (
                   <div className="flex items-center justify-center py-20 text-[var(--fin-t3)]">
-                    <p className="text-[10px] font-mono">Calcul des corrélations en cours… (Yahoo Finance)</p>
+                    <p className="text-[10px] font-mono">Aucune donnée disponible</p>
                   </div>
                 ) : (
                   <div className="flex-1 overflow-auto p-3 space-y-3">
-                    <div className={cn('rounded-lg border border-[var(--fin-border)] p-3','bg-[var(--fin-panel)]')}>
-                      <p className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest mb-2">Vue d'ensemble — corrélations 90j</p>
-                      <CorrelationHeatmap correlations={commodities.filter(c=>c.correlation90d!==0)}/>
-                    </div>
+                    {commodities.every(c=>c.correlation90d===0) ? (
+                      <div className={cn('rounded-lg border border-[var(--fin-border)] p-4','bg-[var(--fin-panel)]')}>
+                        <p className="text-[9px] font-bold text-[var(--fin-amber)] uppercase tracking-widest mb-1">Accumulation des données en cours</p>
+                        <p className="text-[9px] text-[var(--fin-t2)] font-mono">Les corrélations Pearson nécessitent 20+ jours de prix BRVM. Les snapshots quotidiens s'accumulent automatiquement — revenez dans quelques jours.</p>
+                        <div className="mt-2 h-1.5 bg-[var(--fin-hover)] rounded-full overflow-hidden">
+                          <div className="h-full bg-[var(--fin-amber)] rounded-full" style={{width:'5%'}}/>
+                        </div>
+                        <p className="text-[8px] text-[var(--fin-t3)] font-mono mt-1">Minimum requis : 20 jours · Optimal : 90 jours</p>
+                      </div>
+                    ) : (
+                      <div className={cn('rounded-lg border border-[var(--fin-border)] p-3','bg-[var(--fin-panel)]')}>
+                        <p className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest mb-2">Vue d'ensemble — corrélations 90j</p>
+                        <CorrelationHeatmap correlations={commodities.filter(c=>c.correlation90d!==0)}/>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {commodities.map(c => (
                         <div key={c.symbol} className={cn('rounded-lg border border-[var(--fin-border)] p-3','bg-[var(--fin-panel)]')}>

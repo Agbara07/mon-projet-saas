@@ -189,3 +189,16 @@ model BRVMCache {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// Snapshots quotidiens pour calcul de corrélation matières premières (accumulés par le cron)
+model BRVMPriceHistory {
+  id        Int      @id @default(autoincrement())
+  symbol    String
+  date      String   // YYYY-MM-DD
+  close     Float
+  volume    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([symbol, date])
+  @@index([symbol])
+}

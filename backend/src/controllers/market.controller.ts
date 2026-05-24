@@ -13,6 +13,7 @@ import { getUSMacroDashboard } from '../services/market/providers/fred.provider'
 import {
   getCacheStatus, refreshBRVMData,
 } from '../services/brvm-cron.service'
+import prisma from '../config/prisma'
 
 const handle = (fn: (req: Request, res: Response) => Promise<any>) =>
   async (req: Request, res: Response) => {
@@ -205,12 +206,23 @@ export const brvmStockDividend = handle(async (req, res) => {
   res.json(computeDividendData(sym, quote?.price ?? 0))
 })
 
+async function getBRVMHistory(symbol: string): Promise<{ date: string; close: number }[]> {
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - 90)
+  const rows = await prisma.bRVMPriceHistory.findMany({
+    where:   { symbol, date: { gte: cutoff.toISOString().split('T')[0] } },
+    orderBy: { date: 'asc' },
+    select:  { date: true, close: true },
+  })
+  return rows
+}
+
 // Outil 3 : Corrélation matières premières — tous les titres liés
 export const brvmCommodities = handle(async (_req, res) => {
-  const symbols  = Object.keys(COMMODITY_MAP)
-  const results  = await Promise.allSettled(
+  const symbols = Object.keys(COMMODITY_MAP)
+  const results = await Promise.allSettled(
     symbols.map(async sym => {
-      const hist = await brvmProvider.getHistorical(sym, '3mo').catch(() => [])
+      const hist = await getBRVMHistory(sym)
       return computeCommodityCorrelation(sym, hist)
     })
   )
@@ -220,7 +232,7 @@ export const brvmCommodities = handle(async (_req, res) => {
 // Outil 3 : Corrélation matières premières — titre individuel
 export const brvmStockCommodity = handle(async (req, res) => {
   const sym  = req.params.symbol.toUpperCase()
-  const hist = await brvmProvider.getHistorical(sym, '3mo').catch(() => [])
+  const hist = await getBRVMHistory(sym)
   res.json(await computeCommodityCorrelation(sym, hist))
 })
 

@@ -2,7 +2,6 @@
 // Clé gratuite sur https://fred.stlouisfed.org/docs/api/api_key.html
 
 const BASE = 'https://api.stlouisfed.org/fred/series/observations'
-const KEY  = process.env.FRED_API_KEY ?? ''
 
 export interface MacroIndicator {
   id:       string
@@ -23,6 +22,7 @@ export interface USMacroDashboard {
 
 /* ── Fetch brut FRED ────────────────────────────────────────────── */
 async function fredFetch(seriesId: string, limit = 26): Promise<{ date: string; value: string }[]> {
+  const KEY = process.env.FRED_API_KEY ?? ''
   if (!KEY) throw new Error('FRED_API_KEY manquante — clé gratuite sur fred.stlouisfed.org')
   const url = `${BASE}?series_id=${seriesId}&api_key=${KEY}&file_type=json&limit=${limit}&sort_order=desc`
   const r = await fetch(url, {

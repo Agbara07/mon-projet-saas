@@ -1,13 +1,13 @@
 import { Request, Response } from 'express'
 import { marketRouter, benzingaProvider, tmxProvider, etfGlobalProvider, brvmProvider, fmpProvider } from '../services/market/market-router'
 import { ScreenerFilters } from '../services/market/types'
-import {
-  getAllLiquidityScores, computeLiquidityScore,
-  computeDividendData, getAllGovernanceScores, computeGovernanceScore,
-  getAfricanMarketsComparison, getUEMOAMacroDashboard,
-  computeCommodityCorrelation, COMMODITY_MAP,
-  simulateTransactionCost,
-} from '../services/market/providers/brvm-tools.provider'
+import { getAllLiquidityScores, computeLiquidityScore }       from '../services/market/providers/brvm-liquidity.provider'
+import { computeDividendData }                               from '../services/market/providers/brvm-dividends.provider'
+import { computeCommodityCorrelation, COMMODITY_MAP }        from '../services/market/providers/brvm-commodities.provider'
+import { getAfricanMarketsComparison }                       from '../services/market/providers/brvm-africa.provider'
+import { getUEMOAMacroDashboard }                            from '../services/market/providers/brvm-macro.provider'
+import { getAllGovernanceScores, computeGovernanceScore }     from '../services/market/providers/brvm-governance.provider'
+import { simulateTransactionCost }                           from '../services/market/providers/brvm-transaction-cost.provider'
 import { getUSMacroDashboard } from '../services/market/providers/fred.provider'
 import {
   getCacheStatus, refreshBRVMData,

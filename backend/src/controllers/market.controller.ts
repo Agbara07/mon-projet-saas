@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import { marketRouter, benzingaProvider, tmxProvider, etfGlobalProvider, brvmProvider, fmpProvider } from '../services/market/market-router'
+import { cache } from '../services/market/cache'
 import { ScreenerFilters } from '../services/market/types'
 import { getAllLiquidityScores, computeLiquidityScore }       from '../services/market/providers/brvm-liquidity.provider'
 import { computeDividendData }                               from '../services/market/providers/brvm-dividends.provider'
@@ -51,6 +52,31 @@ export const earningsCalendar = handle(async (_req, res) => {
 
 export const marketOverview = handle(async (_req, res) => {
   res.json(await marketRouter.getMarketOverview())
+})
+
+// Symboles fixes pour le ticker public de la landing page
+const PUBLIC_TICKER_SYMBOLS = ['AAPL','NVDA','MSFT','TSLA','AMZN','META','GOOGL','SPY','QQQ']
+
+export const publicTicker = handle(async (_req, res) => {
+  const CACHE_KEY = 'public:ticker'
+  const cached = cache.get<any[]>(CACHE_KEY)
+  if (cached) return res.json(cached)
+
+  const results = await Promise.allSettled(
+    PUBLIC_TICKER_SYMBOLS.map(s => marketRouter.getQuote(s))
+  )
+  const data = results
+    .map((r, i) => r.status === 'fulfilled' ? {
+      symbol:        PUBLIC_TICKER_SYMBOLS[i],
+      name:          r.value.name,
+      price:         r.value.price,
+      change:        r.value.change,
+      changePercent: r.value.changePercent,
+    } : null)
+    .filter(Boolean)
+
+  cache.set(CACHE_KEY, data, 60_000)
+  res.json(data)
 })
 
 export const screener = handle(async (req, res) => {

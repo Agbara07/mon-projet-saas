@@ -15,12 +15,16 @@ import {
   brvmGovernance, brvmTransactionCost,
   brvmCacheStatus, brvmRefresh,
   macroUS, macroUEMOA,
+  publicTicker,
 } from '../controllers/market.controller'
 import { authenticate } from '../middlewares/auth.middleware'
+import rateLimit from 'express-rate-limit'
 
 const router = Router()
 
-// ── /refresh : pas de JWT — protégé uniquement par CRON_SECRET header ─
+// ── Routes publiques (pas de JWT) ─────────────────────────
+const publicLimiter = rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false })
+router.get('/public/ticker', publicLimiter, publicTicker)
 router.post('/brvm/refresh', brvmRefresh)
 
 // ── Toutes les autres routes requièrent un JWT ─────────────

@@ -2,30 +2,105 @@
 
 import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
-import { motion, useInView, useScroll, useTransform, AnimatePresence } from 'framer-motion'
+import { motion, useInView, useScroll, useTransform } from 'framer-motion'
 import {
-  TrendingUp, TrendingDown, Bell, Search, Calendar, BookOpen,
-  Shield, Lock, Zap, Users, BarChart3, ArrowRight, Check, X,
-  ChevronDown, Star, Globe, Cpu, LineChart, PieChart, Activity,
-  AlertTriangle, Target, Award, Newspaper, Sparkles, Play,
+  TrendingUp, Bell, Search, Calendar,
+  Shield, Lock, Zap, Users, BarChart3, ArrowRight, Check,
+  ChevronDown, Star, Globe, Cpu, Activity,
+  AlertTriangle, Target, Award, Sparkles, Play,
+  Crown, LineChart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-/* ─── Ticker data ─────────────────────────────────────────── */
-const TICKERS = [
-  {s:'S&P 500',p:'5 684.21',c:'+0.62%',up:true},
-  {s:'NASDAQ', p:'17 931.40',c:'+0.89%',up:true},
-  {s:'AAPL',   p:'$213.42',c:'+1.24%',up:true},
-  {s:'NVDA',   p:'$127.85',c:'+3.41%',up:true},
-  {s:'TSLA',   p:'$248.50',c:'-1.12%',up:false},
-  {s:'MSFT',   p:'$428.73',c:'+0.87%',up:true},
-  {s:'AMZN',   p:'$196.40',c:'+1.88%',up:true},
-  {s:'META',   p:'$612.10',c:'+2.31%',up:true},
-  {s:'GOOGL',  p:'$178.23',c:'+0.54%',up:true},
-  {s:'BTC',    p:'$97 420',c:'+4.12%',up:true},
-  {s:'ETH',    p:'$3 621',c:'+2.87%',up:true},
-  {s:'DOW',    p:'41 240',c:'-0.14%',up:false},
-  {s:'VIX',    p:'14.23',c:'-3.21%',up:false},
+/* ─── Types ───────────────────────────────────────────────── */
+interface TickerItem {
+  symbol:        string
+  name:          string
+  price:         number
+  change:        number
+  changePercent: number
+}
+
+/* ─── Ticker statique (fallback cold-start Railway) ──────── */
+const TICKER_FALLBACK = [
+  { symbol:'SPY',   name:'S&P 500',    price:568.42,  changePercent:0.62 },
+  { symbol:'QQQ',   name:'NASDAQ',     price:489.31,  changePercent:0.89 },
+  { symbol:'AAPL',  name:'Apple',      price:308.82,  changePercent:1.26 },
+  { symbol:'NVDA',  name:'NVIDIA',     price:127.85,  changePercent:3.41 },
+  { symbol:'TSLA',  name:'Tesla',      price:248.50,  changePercent:-1.12 },
+  { symbol:'MSFT',  name:'Microsoft',  price:428.73,  changePercent:0.87 },
+  { symbol:'AMZN',  name:'Amazon',     price:196.40,  changePercent:1.88 },
+  { symbol:'META',  name:'Meta',       price:612.10,  changePercent:2.31 },
+  { symbol:'GOOGL', name:'Alphabet',   price:178.23,  changePercent:0.54 },
+]
+
+/* ─── Plans pricing (source : billing page) ──────────────── */
+const PLANS = [
+  {
+    key:    'FREE',
+    name:   'Gratuit',
+    price:  '0',
+    icon:   <Shield size={20}/>,
+    color:  'text-zinc-400',
+    border: 'border-white/[.06]',
+    features: [
+      '1 portefeuille',
+      '10 titres en watchlist',
+      '5 alertes actives',
+      'BRVM temps réel',
+      '1 an d\'historique',
+      'Dashboard marché',
+    ],
+  },
+  {
+    key:    'STARTER',
+    name:   'Starter',
+    price:  '9',
+    icon:   <Zap size={20}/>,
+    color:  'text-blue-400',
+    border: 'border-blue-500/20',
+    features: [
+      'Portefeuilles illimités',
+      'Watchlist illimitée',
+      '50 alertes actives',
+      'Screener actions + ETF',
+      '3 ans d\'historique',
+      'App mobile',
+    ],
+  },
+  {
+    key:    'PRO',
+    name:   'Pro',
+    price:  '29',
+    badge:  'Populaire',
+    icon:   <Star size={20}/>,
+    color:  'text-green-400',
+    border: 'border-green-500/30',
+    features: [
+      'Tout Starter inclus',
+      '500 alertes actives',
+      '10 ans d\'historique',
+      'Export CSV',
+      'Accès API REST + WebSocket',
+      'Alertes WebSocket instantanées',
+    ],
+  },
+  {
+    key:    'ADVISOR',
+    name:   'Advisor',
+    price:  '79',
+    icon:   <Crown size={20}/>,
+    color:  'text-yellow-400',
+    border: 'border-yellow-500/20',
+    features: [
+      'Tout Pro inclus',
+      'Portefeuilles clients',
+      'Rapports PDF (200/mois)',
+      'Screener fonds',
+      'Features conseiller',
+      'Support prioritaire',
+    ],
+  },
 ]
 
 /* ─── Features sections ───────────────────────────────────── */
@@ -70,31 +145,23 @@ const SECTIONS = [
 
 const STATS = [
   {n:'12 400+',l:'Investisseurs actifs',icon:<Users size={20}/>},
-  {n:'2.4 Md€',l:'Actifs suivis',icon:<BarChart3 size={20}/>},
-  {n:'0€',l:'Commission',icon:<Target size={20}/>},
+  {n:'2.4 Md$',l:'Actifs suivis',icon:<BarChart3 size={20}/>},
+  {n:'0$',l:'Commission',icon:<Target size={20}/>},
   {n:'< 200ms',l:'Latence live',icon:<Zap size={20}/>},
-]
-
-const GOLD_FEATURES = [
-  'Données de marché temps réel','Screener avancé avec filtres IA',
-  'Alertes illimitées multi-canaux','Analyse fondamentale complète',
-  'Accès API REST + webhooks','Portefeuilles illimités',
-  'Frais de gestion 0% jusqu\'à 500k€','Rapports PDF automatisés',
 ]
 
 const PROTECTION = [
   {icon:<Lock size={24}/>,title:'Chiffrement AES-256',desc:'Données chiffrées en transit et au repos.'},
   {icon:<Shield size={24}/>,title:'Protection du compte',desc:'Détection des accès non autorisés 24h/24.'},
-  {icon:<Cpu size={24}/>,title:'Double authentification',desc:'2FA obligatoire sur tous les accès sensibles.'},
-  {icon:<Zap size={24}/>,title:'Support 24/7',desc:'Réponse garantie en moins de 2 heures.'},
+  {icon:<Cpu size={24}/>,title:'Double authentification',desc:'2FA disponible sur tous les accès sensibles.'},
+  {icon:<Zap size={24}/>,title:'Support réactif',desc:'Réponse garantie en moins de 24 heures.'},
 ]
 
-/* ─── Accent colour map ───────────────────────────────────── */
-const ACCENT: Record<string,{text:string,bg:string,border:string,check:string}> = {
-  green:  {text:'text-green-400',  bg:'bg-green-500/10',  border:'border-green-500/20',  check:'text-green-400'},
-  blue:   {text:'text-blue-400',   bg:'bg-blue-500/10',   border:'border-blue-500/20',   check:'text-blue-400'},
-  gold:   {text:'text-yellow-400', bg:'bg-yellow-500/10', border:'border-yellow-500/20', check:'text-yellow-400'},
-  purple: {text:'text-purple-400', bg:'bg-purple-500/10', border:'border-purple-500/20', check:'text-purple-400'},
+const ACCENT: Record<string,{text:string,bg:string,border:string}> = {
+  green:  {text:'text-green-400',  bg:'bg-green-500/10',  border:'border-green-500/20'},
+  blue:   {text:'text-blue-400',   bg:'bg-blue-500/10',   border:'border-blue-500/20'},
+  gold:   {text:'text-yellow-400', bg:'bg-yellow-500/10', border:'border-yellow-500/20'},
+  purple: {text:'text-purple-400', bg:'bg-purple-500/10', border:'border-purple-500/20'},
 }
 
 /* ─── Mini mockups ────────────────────────────────────────── */
@@ -160,7 +227,7 @@ function ScreenerMock() {
             'bg-yellow-500/10 border-yellow-500/20 text-yellow-400')}>{f.l}</span>
         ))}
       </div>
-      {[{s:'AAPL',n:'Apple',p:213.42,c:+1.24,cap:'3.28T',pe:28.4,sel:true},{s:'MSFT',n:'Microsoft',p:428.73,c:+0.87,cap:'3.19T',pe:35.1,sel:false},{s:'NVDA',n:'NVIDIA',p:127.85,c:+3.41,cap:'3.13T',pe:55.2,sel:false},{s:'GOOGL',n:'Alphabet',p:178.23,c:+0.54,cap:'2.19T',pe:22.3,sel:false}].map(r=>(
+      {[{s:'AAPL',n:'Apple',p:308.82,c:+1.26,cap:'3.28T',pe:28.4,sel:true},{s:'MSFT',n:'Microsoft',p:428.73,c:+0.87,cap:'3.19T',pe:35.1,sel:false},{s:'NVDA',n:'NVIDIA',p:127.85,c:+3.41,cap:'3.13T',pe:55.2,sel:false},{s:'GOOGL',n:'Alphabet',p:178.23,c:+0.54,cap:'2.19T',pe:22.3,sel:false}].map(r=>(
         <div key={r.s} className={cn('flex items-center justify-between px-3 py-2.5 rounded-xl border',r.sel?'bg-blue-600/10 border-blue-600/20':'bg-zinc-900 border-white/[.04]')}>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold">{r.s[0]}</div>
@@ -270,15 +337,48 @@ function SlideIn({ children, delay=0, from='left', className='' }: { children:Re
   )
 }
 
+/* ─── Ticker live ─────────────────────────────────────────── */
+function useLiveTicker() {
+  const [tickers, setTickers] = useState<TickerItem[]>([])
+
+  useEffect(() => {
+    const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'
+
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/market/public/ticker`, { cache: 'no-store' })
+        if (!res.ok) throw new Error('fetch failed')
+        const data: TickerItem[] = await res.json()
+        if (Array.isArray(data) && data.length > 0) setTickers(data)
+      } catch {
+        // Silently fall back to static data on error
+      }
+    }
+
+    load()
+    const id = setInterval(load, 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  return tickers
+}
+
 /* ─── Main ────────────────────────────────────────────────── */
 export default function Landing() {
   const [scrollY, setScrollY] = useState(0)
+  const liveTickers = useLiveTicker()
+
   useEffect(()=>{ const h=()=>setScrollY(window.scrollY); window.addEventListener('scroll',h); return ()=>window.removeEventListener('scroll',h) },[])
 
   const heroRef = useRef(null)
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start','end start'] })
   const heroOpacity  = useTransform(scrollYProgress, [0,1], [1, 0])
   const heroScale    = useTransform(scrollYProgress, [0,1], [1, 0.96])
+
+  // Utilise les données live si disponibles, sinon fallback statique
+  const displayTickers = liveTickers.length > 0
+    ? liveTickers
+    : TICKER_FALLBACK.map(t => ({ ...t, change: 0 }))
 
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden">
@@ -296,52 +396,42 @@ export default function Landing() {
             </Link>
             <div className="hidden lg:flex items-center gap-0.5">
               {[
-                {l:'Investir',  href:'#features'},
-                {l:'Screener',  href:'#features'},
-                {l:'Alertes',   href:'#features'},
-                {l:'Gold',      href:'#gold',     badge:'GOLD'},
-                {l:'Apprendre', href:'#faq'},
+                {l:'Fonctionnalités', href:'#features'},
+                {l:'Screener',        href:'#features'},
+                {l:'Alertes',         href:'#features'},
+                {l:'Tarifs',          href:'#pricing'},
+                {l:'FAQ',             href:'#faq'},
               ].map(item => (
                 <a key={item.l} href={item.href}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+                  className="px-3 py-1.5 text-sm text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
                   {item.l}
-                  {/* micro-badge fond sombre, police mono — remplace le "Gold" jaune */}
-                  {item.badge && (
-                    <span className="text-[9px] font-mono font-bold bg-zinc-800/80 text-zinc-400 border border-zinc-700/60 px-1.5 py-0.5 rounded tracking-widest leading-none">
-                      {item.badge}
-                    </span>
-                  )}
                 </a>
               ))}
             </div>
           </div>
-          {/* gap-6 → plus d'espace entre Connexion et Commencer */}
           <div className="flex items-center gap-6">
-            <Link href="/login"
-              className="hidden sm:block text-sm text-slate-400 hover:text-white transition-colors">
+            <Link href="/login" className="hidden sm:block text-sm text-slate-400 hover:text-white transition-colors">
               Connexion
             </Link>
-            <Link href="/register"
-              className="bg-white text-black text-sm px-5 py-2.5 rounded-xl font-bold hover:bg-zinc-100 transition-all shadow-lg shadow-white/10 hover:shadow-white/20">
+            <Link href="/register" className="bg-white text-black text-sm px-5 py-2.5 rounded-xl font-bold hover:bg-zinc-100 transition-all shadow-lg shadow-white/10 hover:shadow-white/20">
               Commencer
             </Link>
           </div>
         </div>
       </motion.nav>
 
-      {/* ── Ticker ─────────────────────────────────────────── */}
+      {/* ── Ticker live ────────────────────────────────────── */}
       <div className="pt-16 bg-zinc-950/50 border-b border-white/[.04] overflow-hidden">
         <div className="flex gap-10 whitespace-nowrap py-2.5 animate-ticker" style={{width:'max-content'}}>
-          {[...TICKERS,...TICKERS].map((t,i)=>(
+          {[...displayTickers,...displayTickers].map((t,i)=>(
             <span key={i} className="flex items-center gap-2 text-xs">
-              {/* ticker — uppercase compact */}
-              <span className="text-zinc-600 font-mono uppercase tracking-wide">{t.s}</span>
-              {/* prix — monospace + tabular-nums pour alignement parfait */}
-              <span className="text-white font-mono font-semibold tabular-nums">{t.p}</span>
-              {/* variation — Koyfin muted : teal-green #26a69a / coral-red #ef5350 */}
+              <span className="text-zinc-600 font-mono uppercase tracking-wide">{t.symbol}</span>
+              <span className="text-white font-mono font-semibold tabular-nums">
+                ${typeof t.price === 'number' ? t.price.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : t.price}
+              </span>
               <span className="font-mono font-bold tabular-nums"
-                style={{color: t.up ? '#26a69a' : '#ef5350'}}>
-                {t.c}
+                style={{color: (t.changePercent ?? 0) >= 0 ? '#26a69a' : '#ef5350'}}>
+                {(t.changePercent ?? 0) >= 0 ? '+' : ''}{(t.changePercent ?? 0).toFixed(2)}%
               </span>
             </span>
           ))}
@@ -349,10 +439,8 @@ export default function Landing() {
       </div>
 
       {/* ── Hero ───────────────────────────────────────────── */}
-      {/* pt-12 → CTA visible sans scroll sur écrans 900px+ */}
       <motion.section ref={heroRef} style={{opacity:heroOpacity,scale:heroScale}}
         className="relative overflow-hidden pt-12 pb-10 px-5">
-        {/* bg effects */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(34,197,94,0.07),transparent)] pointer-events-none"/>
         <div className="absolute top-20 left-1/3 w-96 h-96 bg-green-600/[.04] rounded-full blur-3xl pointer-events-none"/>
         <div className="absolute top-20 right-1/3 w-96 h-96 bg-blue-600/[.04] rounded-full blur-3xl pointer-events-none"/>
@@ -360,25 +448,22 @@ export default function Landing() {
         <div className="relative max-w-7xl mx-auto text-center">
           <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:.5}}>
             <span className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-semibold px-4 py-2 rounded-full">
-              <Sparkles size={12}/> Nouveau — Analyse IA disponible · Sans commission · Sans CB
+              <Sparkles size={12}/> Données temps réel · 14 providers · Sans commission
             </span>
           </motion.div>
 
-          {/* mt-5 → moins de blanc avant le titre */}
           <motion.h1 initial={{opacity:0,y:24}} animate={{opacity:1,y:0}} transition={{duration:.65,delay:.1,ease:[.22,1,.36,1]}}
             className="mt-5 text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-[1.02] tracking-tight text-balance">
             Investissez avec la<br/>
             <span className="gradient-text-green">précision des pros.</span>
           </motion.h1>
 
-          {/* text-slate-300 → description lisible, plus claire que zinc-400 */}
           <motion.p initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:.6,delay:.2}}
             className="mt-5 text-slate-300 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
             Portfolio tracker temps réel, screener institutionnel, alertes intelligentes et calendrier des résultats.
-            Tout ce dont vous avez besoin pour investir mieux.
+            Marchés US, Europe, Canada et BRVM Afrique de l'Ouest.
           </motion.p>
 
-          {/* mt-7 → CTA remonté, visible sans scroll sur 900px */}
           <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:.6,delay:.3}}
             className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/register" className="group inline-flex items-center gap-2 bg-white text-black px-8 py-4 rounded-2xl text-base font-bold hover:bg-zinc-100 transition-all shadow-2xl shadow-white/10 hover:shadow-white/20 hover:-translate-y-0.5">
@@ -386,21 +471,19 @@ export default function Landing() {
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/>
             </Link>
             <a href="#features" className="inline-flex items-center gap-2 border border-white/10 text-zinc-300 hover:text-white hover:border-white/25 px-8 py-4 rounded-2xl text-base font-medium transition-all">
-              <Play size={14} className="text-zinc-500"/> Voir la démo
+              <Play size={14} className="text-zinc-500"/> Voir les fonctionnalités
             </a>
           </motion.div>
           <motion.p initial={{opacity:0}} animate={{opacity:1}} transition={{delay:.5}} className="mt-4 text-xs text-zinc-700">
-            Rejoignez 12 400+ investisseurs · Annulation à tout moment · Setup en 2 minutes
+            Sans carte bancaire · Trial 14 jours · Annulation à tout moment
           </motion.p>
 
-          {/* Hero mockup — mt-10 : légèrement sous le CTA, amorçage visuel */}
           <motion.div initial={{opacity:0,y:40,scale:.96}} animate={{opacity:1,y:0,scale:1}}
             transition={{duration:.8,delay:.4,ease:[.22,1,.36,1]}}
             className="mt-10 relative max-w-5xl mx-auto">
             <div className="animate-float">
               <PortfolioMock/>
             </div>
-            {/* Floating cards */}
             <motion.div initial={{opacity:0,x:-20}} animate={{opacity:1,x:0}} transition={{delay:.9}}
               className="absolute -left-8 top-1/3 hidden xl:block bg-zinc-900 border border-white/[.06] rounded-2xl p-4 shadow-2xl w-52">
               <div className="flex items-center gap-2 mb-2">
@@ -413,7 +496,7 @@ export default function Landing() {
               className="absolute -right-8 top-1/4 hidden xl:block bg-zinc-900 border border-white/[.06] rounded-2xl p-4 shadow-2xl w-48">
               <p className="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-2">AAPL Q2</p>
               <div className="space-y-1.5">
-                {[['BPA réel','$2.18','text-green-400'],['Surprise','+8.4%','text-green-400'],['Revenus','$94.4Md','text-white']].map(([l,v,c])=>(
+                {[['BPA réel','$2.36','text-green-400'],['Surprise','+8.2%','text-green-400'],['Revenus','$94.4Md','text-white']].map(([l,v,c])=>(
                   <div key={l} className="flex justify-between text-xs"><span className="text-zinc-400">{l}</span><span className={cn('font-bold',c)}>{v}</span></div>
                 ))}
               </div>
@@ -447,7 +530,6 @@ export default function Landing() {
             <section key={sec.badge} className={cn('py-24 px-5',i%2===1?'bg-zinc-950/30 border-y border-white/[.03]':'')}>
               <div className="max-w-7xl mx-auto">
                 <div className={cn('grid grid-cols-1 lg:grid-cols-2 gap-16 items-center',sec.reverse&&'lg:[&>*:first-child]:order-2 lg:[&>*:last-child]:order-1')}>
-                  {/* Text */}
                   <SlideIn from={sec.reverse?'right':'left'}>
                     <span className={cn('inline-flex items-center gap-1.5 border text-xs font-semibold px-3 py-1 rounded-full',a.bg,a.border,a.text)}>
                       {sec.icon} {sec.badge}
@@ -475,7 +557,6 @@ export default function Landing() {
                       </Link>
                     </div>
                   </SlideIn>
-                  {/* Mockup */}
                   <SlideIn from={sec.reverse?'left':'right'} delay={0.1}>
                     <motion.div whileHover={{y:-4,transition:{duration:.3}}} className="cursor-default">
                       {MOCKS[sec.mockup]}
@@ -488,62 +569,89 @@ export default function Landing() {
         })}
       </div>
 
-      {/* ── GOLD section ───────────────────────────────────── */}
-      <section id="gold" className="py-24 px-5">
+      {/* ── Pricing ────────────────────────────────────────── */}
+      <section id="pricing" className="py-24 px-5 border-t border-white/[.04]">
         <div className="max-w-7xl mx-auto">
-          <FadeUp>
-            <div className="relative rounded-4xl overflow-hidden border border-yellow-500/15 bg-gradient-to-br from-yellow-950/30 via-zinc-950 to-zinc-950 p-10 md:p-16">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_80%_50%,rgba(234,179,8,0.04),transparent)] pointer-events-none"/>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                <div>
-                  <span className="inline-flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-bold px-4 py-2 rounded-full mb-6">
-                    <Award size={12}/> INVESTSAAS GOLD
-                  </span>
-                  <h2 className="text-4xl md:text-5xl font-black leading-tight mb-4">
-                    L'abonnement qui<br/><span className="gradient-text-gold">change tout.</span>
-                  </h2>
-                  <p className="text-zinc-400 text-lg mb-8">
-                    Données temps réel, accès API, analyse IA et frais de gestion à <span className="text-white font-bold">0%</span> jusqu'à 500 000€. Tout pour 29€/mois.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-8">
-                    {GOLD_FEATURES.map(f=>(
-                      <div key={f} className="flex items-center gap-2 text-sm text-zinc-300">
-                        <Check size={14} className="text-yellow-400 flex-shrink-0" strokeWidth={2.5}/>{f}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3 items-start">
-                    <Link href="/register" className="inline-flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-black px-8 py-4 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/15">
-                      Passer à Gold — 29€/mois
-                    </Link>
-                    <p className="text-zinc-600 text-xs mt-2 sm:mt-3">14 jours gratuits · Sans engagement</p>
-                  </div>
-                </div>
-                {/* Comparison table */}
-                <div className="bg-black/30 rounded-2xl border border-white/[.05] p-6 backdrop-blur">
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <p className="text-zinc-600 text-xs font-semibold uppercase tracking-wider">Fonctionnalité</p>
-                    <p className="text-zinc-600 text-xs font-semibold uppercase tracking-wider text-center">Gratuit</p>
-                    <p className="text-yellow-400 text-xs font-semibold uppercase tracking-wider text-center">Gold</p>
-                  </div>
-                  <div className="space-y-0">
-                    {[
-                      ['Données','J-15 min','Temps réel'],['Alertes','10/mois','Illimitées'],
-                      ['Screener','Basique','IA + Fondamental'],['API','✕','REST + WS'],
-                      ['Portefeuilles','1','Illimités'],['Frais gestion','0.5%','0% → 500k€'],
-                      ['Support','Communauté','24h/24 dédié'],
-                    ].map(([l,f,g])=>(
-                      <div key={l} className="grid grid-cols-3 gap-2 py-2.5 border-b border-white/[.04] last:border-0 text-sm">
-                        <span className="text-zinc-400">{l}</span>
-                        <span className="text-zinc-600 text-center">{f}</span>
-                        <span className="text-yellow-400 font-semibold text-center">{g}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+          <FadeUp className="text-center mb-14">
+            <p className="text-zinc-500 text-xs uppercase tracking-widest mb-3">Tarifs</p>
+            <h2 className="text-4xl md:text-5xl font-black mb-4">
+              Simple, transparent,<br/><span className="gradient-text-green">sans surprise.</span>
+            </h2>
+            <p className="text-zinc-400 max-w-lg mx-auto">
+              Commencez gratuitement. Évoluez quand vous êtes prêt. Annulez à tout moment.
+            </p>
           </FadeUp>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {PLANS.map((plan, i) => (
+              <FadeUp key={plan.key} delay={i * 0.08}>
+                <motion.div
+                  whileHover={{ y: -4, transition: { duration: .25 } }}
+                  className={cn(
+                    'relative flex flex-col rounded-2xl border p-6 h-full transition-colors cursor-default',
+                    plan.key === 'PRO'
+                      ? 'bg-zinc-900 border-green-500/30 shadow-xl shadow-green-500/5'
+                      : 'bg-zinc-950 border-white/[.06] hover:border-white/10'
+                  )}
+                >
+                  {/* Badge populaire */}
+                  {plan.badge && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold px-3 py-1 rounded-full bg-green-500 text-black whitespace-nowrap">
+                      {plan.badge}
+                    </span>
+                  )}
+
+                  {/* Header */}
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center bg-white/5', plan.color)}>
+                      {plan.icon}
+                    </div>
+                    <div>
+                      <p className="font-bold text-white text-sm">{plan.name}</p>
+                      <p className="text-zinc-500 text-xs">
+                        {plan.price === '0' ? 'Gratuit' : `$${plan.price}/mois`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Prix affiché */}
+                  <div className="mb-6">
+                    <span className="text-4xl font-black text-white tabular-nums">
+                      {plan.price === '0' ? '0' : `$${plan.price}`}
+                    </span>
+                    {plan.price !== '0' && <span className="text-zinc-500 text-sm ml-1">/mois</span>}
+                  </div>
+
+                  {/* Features */}
+                  <ul className="flex-1 space-y-2.5 mb-6">
+                    {plan.features.map(f => (
+                      <li key={f} className="flex items-start gap-2.5 text-xs text-zinc-300">
+                        <Check size={12} className={cn('mt-0.5 flex-shrink-0', plan.color)} strokeWidth={2.5}/>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* CTA */}
+                  <Link
+                    href="/register"
+                    className={cn(
+                      'w-full text-center py-2.5 rounded-xl text-sm font-bold transition-all',
+                      plan.key === 'PRO'
+                        ? 'bg-green-500 text-black hover:bg-green-400'
+                        : 'bg-white/5 text-zinc-300 border border-white/10 hover:bg-white/10 hover:text-white'
+                    )}
+                  >
+                    {plan.key === 'FREE' ? 'Commencer gratuitement' : `Essayer ${plan.name}`}
+                  </Link>
+                </motion.div>
+              </FadeUp>
+            ))}
+          </div>
+
+          <p className="text-center text-zinc-700 text-xs mt-8">
+            Prix en USD · Facturation mensuelle · 14 jours d'essai gratuit sur tous les plans payants
+          </p>
         </div>
       </section>
 
@@ -574,20 +682,20 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto">
           <FadeUp className="text-center mb-12">
             <p className="text-zinc-500 text-xs uppercase tracking-widest mb-2">Témoignages</p>
-            <h2 className="text-3xl md:text-4xl font-black mb-3">Ce que nos clients en pensent</h2>
+            <h2 className="text-3xl md:text-4xl font-black mb-3">Ce que nos utilisateurs en pensent</h2>
             <div className="flex items-center justify-center gap-0.5">
               {[...Array(5)].map((_,i)=><Star key={i} size={18} className="text-yellow-400 fill-yellow-400"/>)}
-              <span className="text-zinc-500 text-sm ml-2">4.9 / 5 · 847 avis vérifiés</span>
+              <span className="text-zinc-500 text-sm ml-2">4.9 / 5</span>
             </div>
           </FadeUp>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               {name:'Marie D.',role:'Investisseur particulier',av:'MD',col:'from-blue-600 to-blue-800',
-                text:"Les alertes m'ont fait économiser des milliers d'euros. Je ne rate plus aucun signal. Le screener est devenu indispensable dans ma routine."},
+                text:"Les alertes m'ont permis de suivre mes positions sans rester rivée à l'écran. Le screener BRVM est particulièrement bien pensé."},
               {name:'Thomas L.',role:'Gérant de patrimoine',av:'TL',col:'from-purple-600 to-purple-800',
-                text:"Nous gérons 40+ clients depuis une seule interface. Le multi-tenant est exactement ce dont nous avions besoin. ROI en moins de 2 semaines."},
+                text:"Nous suivons nos clients depuis une seule interface. Le plan Advisor avec les portefeuilles clients est exactement ce dont nous avions besoin."},
               {name:'Sophie R.',role:'Trader indépendant',av:'SR',col:'from-green-600 to-green-800',
-                text:"Données temps réel + screener fondamental en un outil. J'ai abandonné Bloomberg Terminal. Sérieusement, je ne plaisante pas."},
+                text:"Données temps réel + screener fondamental en un outil. L'accès API sur le plan Pro m'a permis d'automatiser mes stratégies."},
             ].map((t,i)=>(
               <FadeUp key={t.name} delay={i*.1}>
                 <motion.div whileHover={{y:-4}} className="bg-zinc-950 border border-white/[.05] rounded-2xl p-6 cursor-default transition-colors hover:border-white/10">
@@ -614,15 +722,22 @@ export default function Landing() {
           </FadeUp>
           <div className="space-y-2">
             {[
-              {q:"Est-ce vraiment gratuit pour commencer ?",a:"Oui. Le plan gratuit n'exige aucune carte bancaire. 1 portefeuille, 10 alertes/mois, données différées 15min."},
-              {q:"Les données sont-elles en temps réel ?",a:"Sur le plan Gold oui — via Yahoo Finance 2 avec ~15s de délai, largement suffisant pour la plupart des stratégies."},
-              {q:"Puis-je annuler mon abonnement ?",a:"Absolument. Pas d'engagement, pas de frais. Annulez depuis votre espace Billing en un clic."},
-              {q:"Vos données sont-elles sécurisées ?",a:"Chiffrement AES-256, hébergement Europe (RGPD), nous n'accédons jamais à vos comptes courtiers réels."},
-              {q:"Y a-t-il une API disponible ?",a:"Oui, sur le plan Gold et Enterprise. API REST complète + WebSocket + webhooks personnalisés."},
+              {q:"Est-ce vraiment gratuit pour commencer ?",
+               a:"Oui. Le plan gratuit ne nécessite aucune carte bancaire : 1 portefeuille, 5 alertes actives, 10 titres en watchlist, accès BRVM temps réel et 1 an d'historique."},
+              {q:"Les données sont-elles en temps réel ?",
+               a:"Oui, sur tous les plans via notre infrastructure de 14 providers (Finnhub, Twelve Data, Polygon, EODHD et plus). Les données BRVM sont rafraîchies toutes les 15 minutes en séance."},
+              {q:"Puis-je annuler mon abonnement ?",
+               a:"Absolument. Pas d'engagement, pas de frais. Annulez depuis votre espace Billing en un clic — votre accès reste actif jusqu'à la fin de la période payée."},
+              {q:"Vos données sont-elles sécurisées ?",
+               a:"Chiffrement AES-256, hébergement sécurisé (Railway + Vercel), nous n'accédons jamais à vos comptes courtiers réels. Nous ne stockons aucune donnée bancaire."},
+              {q:"Y a-t-il une API disponible ?",
+               a:"Oui, à partir du plan Pro. API REST complète + WebSocket pour les alertes en temps réel. Documentation disponible après inscription."},
+              {q:"Quels marchés sont couverts ?",
+               a:"Marchés US (NYSE, NASDAQ), Europe (Euronext, Frankfurt, LSE), Canada (TSX) et BRVM (Bourse Régionale des Valeurs Mobilières, Afrique de l'Ouest)."},
             ].map((f,i)=>(
               <FadeUp key={i} delay={i*.06}>
                 <details className="bg-zinc-950 border border-white/[.05] rounded-2xl group hover:border-white/10 transition-colors">
-                  <summary className="px-6 py-4 font-semibold text-sm flex items-center justify-between text-zinc-200 hover:text-white">
+                  <summary className="px-6 py-4 font-semibold text-sm flex items-center justify-between text-zinc-200 hover:text-white cursor-pointer">
                     {f.q}
                     <ChevronDown size={16} className="text-zinc-600 group-open:rotate-180 transition-transform flex-shrink-0 ml-4"/>
                   </summary>
@@ -642,7 +757,7 @@ export default function Landing() {
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_100%,rgba(34,197,94,0.06),transparent)] pointer-events-none"/>
               <span className="inline-flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-semibold px-4 py-2 rounded-full mb-6">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"/>
-                12 400+ investisseurs actifs · 0€ de commission
+                14 jours d'essai gratuit · Sans carte bancaire
               </span>
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-4">
                 Rejoignez la nouvelle<br/>
@@ -673,16 +788,16 @@ export default function Landing() {
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center font-black text-black text-sm">I</div>
                 <span className="font-bold">InvestSaaS</span>
               </div>
-              <p className="text-zinc-600 text-xs leading-relaxed mb-4">La plateforme d'investissement nouvelle génération. Données temps réel, analyse IA, alertes instantanées.</p>
+              <p className="text-zinc-600 text-xs leading-relaxed mb-4">La plateforme d'investissement nouvelle génération. Données temps réel, 14 providers, alertes instantanées. US · Europe · Canada · BRVM.</p>
               <div className="flex gap-2">
                 {['𝕏','in','▶'].map(s=><a key={s} href="#" className="w-8 h-8 bg-zinc-900 hover:bg-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 hover:text-white transition-colors">{s}</a>)}
               </div>
             </div>
             {[
-              {title:'Produit',links:['Portfolio','Screener','Alertes','Calendrier','Watchlist','Profil action']},
-              {title:'Abonnement',links:['Plan Gratuit','Plan Pro','Enterprise','Gold','API','Tarifs']},
+              {title:'Produit',    links:['Portfolio','Screener','Alertes','Calendrier','Watchlist','Terminal action']},
+              {title:'Abonnement',links:['Plan Gratuit','Starter — $9/mois','Pro — $29/mois','Advisor — $79/mois','API']},
               {title:'Ressources',links:['Documentation','Blog','Guides','Statut API','Changelog']},
-              {title:'Légal',links:['CGU','Confidentialité','RGPD','Risques','Mentions légales']},
+              {title:'Légal',     links:['CGU','Confidentialité','RGPD','Risques','Mentions légales']},
             ].map(col=>(
               <div key={col.title}>
                 <p className="text-white text-xs font-bold uppercase tracking-widest mb-4">{col.title}</p>
@@ -691,7 +806,7 @@ export default function Landing() {
             ))}
           </div>
           <div className="border-t border-white/[.04] pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-zinc-700 text-xs">© 2025 InvestSaaS SAS · Paris, France</p>
+            <p className="text-zinc-700 text-xs">© 2026 InvestSaaS · Paris, France</p>
             <p className="text-zinc-800 text-xs max-w-xl text-center md:text-right leading-relaxed">
               Investir comporte des risques de perte en capital. Les performances passées ne préjugent pas des performances futures. InvestSaaS ne fournit pas de conseil en investissement.
             </p>

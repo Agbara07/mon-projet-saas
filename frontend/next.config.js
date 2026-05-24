@@ -5,7 +5,10 @@ const nextConfig = {
     NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4000',
   },
   images: {
-    domains: ['s.yimg.com', 'media.zenfs.com'],
+    remotePatterns: [
+      { protocol: 'https', hostname: 's.yimg.com' },
+      { protocol: 'https', hostname: 'media.zenfs.com' },
+    ],
   },
 }
 

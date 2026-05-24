@@ -5,7 +5,7 @@ import { motion, useInView } from 'framer-motion'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import {
   TrendingUp, TrendingDown, BarChart3,
-  Calendar, Eye, ArrowRight, Zap, Activity, RefreshCw,
+  Calendar, Eye, ArrowRight, Zap, Activity,
   Clock, WifiOff,
 } from 'lucide-react'
 import { marketStatusLabel } from '@/lib/market-hours'
@@ -75,7 +75,6 @@ export default function DashboardPage() {
   const [earnings,  setEarnings]  = useState<EarningsEvent[]>([])
   const [watchlist, setWatchlist] = useState<WatchItem[]>([])
   const [history,   setHistory]   = useState<{ date:string; close:number }[]>([])
-  const [loading,   setLoading]   = useState(true)
   const [chartSym,  setChartSym]  = useState('SPY')
   const [now,       setNow]       = useState('')
 
@@ -85,16 +84,13 @@ export default function DashboardPage() {
     return () => clearInterval(id)
   }, [])
 
+  // Fire all requests in parallel — each section renders its own skeleton while loading
   useEffect(() => {
-    Promise.all([
-      api.get('/users/me'), api.get('/market/overview'),
-      api.get('/market/earnings'), api.get('/watchlist'),
-      api.get('/market/SPY/historical?period=1mo'),
-    ]).then(([u,idx,earn,wl,hist]) => {
-      setUser(u.data); setIndices(idx.data.slice(0,5))
-      setEarnings(earn.data.slice(0,10)); setWatchlist(wl.data.slice(0,8))
-      setHistory(hist.data); setLoading(false)
-    }).catch(() => setLoading(false))
+    api.get('/users/me').then(r => setUser(r.data)).catch(() => {})
+    api.get('/market/overview').then(r => setIndices((r.data as Index[]).slice(0, 5))).catch(() => {})
+    api.get('/market/earnings').then(r => setEarnings((r.data as EarningsEvent[]).slice(0, 10))).catch(() => {})
+    api.get('/watchlist').then(r => setWatchlist((r.data as WatchItem[]).slice(0, 8))).catch(() => {})
+    api.get('/market/SPY/historical?period=1mo').then(r => setHistory(r.data as { date:string; close:number }[])).catch(() => {})
   }, [])
 
   const changeChart = async (sym: string) => {
@@ -107,12 +103,6 @@ export default function DashboardPage() {
   const upcoming = earnings.filter(e => e.date >= today).slice(0, 5)
   const past     = earnings.filter(e => e.date <  today).slice(0, 5)
   const isUp = (history.length >= 2) && history[history.length-1]?.close >= history[0]?.close
-
-  if (loading) return (
-    <div className="flex items-center justify-center h-full py-32 text-[var(--fin-t3)]">
-      <RefreshCw size={16} strokeWidth={1.5} className="animate-spin"/>
-    </div>
-  )
 
   return (
     <div className="flex flex-col h-full">

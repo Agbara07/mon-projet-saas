@@ -1,8 +1,47 @@
 import axios from 'axios'
 
+// ── GET cache in-memory (survives tab navigation, resets on page reload) ──────
+const _cache = new Map<string, { data: unknown; exp: number }>()
+
+const TTL: [RegExp, number][] = [
+  [/\/users\/me/,          120_000],  // user session — 2 min
+  [/\/market\/overview/,    30_000],  // indices — 30 s
+  [/\/market\/earnings/,   300_000],  // calendar — 5 min
+  [/\/watchlist/,           30_000],  // watchlist — 30 s
+  [/\/market\/brvm\b/,      60_000],  // BRVM quotes — 1 min
+  [/\/historical/,          60_000],  // historical — 1 min
+  [/\/brvm\/tools\//,      300_000],  // BRVM tools — 5 min
+  [/\/macro\//,            300_000],  // macro — 5 min
+]
+
+function ttlFor(url: string): number {
+  for (const [re, ms] of TTL) if (re.test(url)) return ms
+  return 0
+}
+
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api',
 })
+
+// Intercept GET responses to populate cache
+api.interceptors.response.use((res) => {
+  if (res.config.method === 'get') {
+    const ttl = ttlFor(res.config.url ?? '')
+    if (ttl > 0) _cache.set(res.config.url!, { data: res.data, exp: Date.now() + ttl })
+  }
+  return res
+})
+
+// Intercept GET requests to return cached data when fresh
+const originalGet = api.get.bind(api)
+;(api as any).get = async function (url: string, config?: any) {
+  const ttl = ttlFor(url)
+  if (ttl > 0) {
+    const hit = _cache.get(url)
+    if (hit && Date.now() < hit.exp) return { data: hit.data }
+  }
+  return originalGet(url, config)
+}
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken')

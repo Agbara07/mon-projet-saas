@@ -13,7 +13,7 @@ import {
   brvmCommodities, brvmStockCommodity,
   brvmAfricaComparison, brvmMacro,
   brvmGovernance, brvmTransactionCost,
-  brvmCacheStatus, brvmRefresh,
+  brvmCacheStatus, brvmRefresh, brvmBackfill,
   macroUS, macroUEMOA,
   publicTicker,
 } from '../controllers/market.controller'
@@ -24,8 +24,9 @@ const router = Router()
 
 // ── Routes publiques (pas de JWT) ─────────────────────────
 const publicLimiter = rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false })
-router.get('/public/ticker', publicLimiter, publicTicker)
-router.post('/brvm/refresh', brvmRefresh)
+router.get('/public/ticker',  publicLimiter, publicTicker)
+router.post('/brvm/refresh',  brvmRefresh)
+router.post('/brvm/backfill', brvmBackfill)
 
 // ── Toutes les autres routes requièrent un JWT ─────────────
 router.use(authenticate)

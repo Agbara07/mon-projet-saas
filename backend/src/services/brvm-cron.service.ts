@@ -196,6 +196,243 @@ export async function getCachedQuotes(): Promise<any[] | null> {
   } catch { return null }
 }
 
+/* ══════════════════════════════════════════════════════════
+   BACKFILL — Seed 90 jours d'historique en une seule passe
+   Sources (cascade) :
+     1. EODHD   — JSON API, tickers .CI, fiable
+     2. SikaFinance — scraping HTML par symbole
+     3. BRVM Bulletins mensuels — Excel BRVM officiel
+   ══════════════════════════════════════════════════════════ */
+
+export interface BackfillResult {
+  success:    boolean
+  sources:    Array<{ name: string; symbols: number; rows: number; error?: string }>
+  total:      { symbols: number; rows: number }
+  durationMs: number
+}
+
+type DayRow = { date: string; close: number; volume?: number }
+
+async function upsertRows(map: Map<string, DayRow[]>): Promise<number> {
+  let count = 0
+  for (const [symbol, rows] of map) {
+    const ops = rows
+      .filter(r => r.close > 0)
+      .map(r => prisma.bRVMPriceHistory.upsert({
+        where:  { symbol_date: { symbol, date: r.date } },
+        update: { close: r.close, volume: r.volume ?? 0 },
+        create: { symbol,         date: r.date, close: r.close, volume: r.volume ?? 0 },
+      }))
+    if (ops.length) { await Promise.allSettled(ops); count += ops.length }
+  }
+  return count
+}
+
+/* ── Source 1 : EODHD ──────────────────────────────────────
+   Tickers BRVM : suffixe .CI (exchange Abidjan, EODHD code CI)
+   https://eodhd.com/api/eod/{SYM}.CI?api_token=KEY&from=&to=&fmt=json
+   Retourne [{date, close, volume}] — tous les symboles en parallèle */
+async function backfillEOHDD(
+  symbols: string[], from: string, to: string,
+): Promise<{ data: Map<string, DayRow[]>; failed: string[] }> {
+  const KEY = process.env.EODHD_API_KEY ?? ''
+  if (!KEY) throw new Error('EODHD_API_KEY manquante')
+
+  const data:   Map<string, DayRow[]> = new Map()
+  const failed: string[]              = []
+
+  await Promise.allSettled(symbols.map(async sym => {
+    try {
+      const url = `https://eodhd.com/api/eod/${sym}.CI?api_token=${KEY}&from=${from}&to=${to}&fmt=json`
+      const r   = await fetch(url, { signal: AbortSignal.timeout(12_000) })
+      if (!r.ok) { failed.push(sym); return }
+      const rows = await r.json() as { date: string; close: number; volume: number }[]
+      if (Array.isArray(rows) && rows.length > 0) {
+        data.set(sym, rows.map(d => ({ date: d.date, close: d.close, volume: d.volume ?? 0 })))
+      } else { failed.push(sym) }
+    } catch { failed.push(sym) }
+  }))
+
+  return { data, failed }
+}
+
+/* ── Source 2 : SikaFinance historique ─────────────────────
+   URL : https://www.sikafinance.com/marches/historique/{sym}
+   Tableau HTML avec colonnes date (DD/MM/YYYY) + cours de clôture */
+function parseSikaHistoricalTable(html: string): DayRow[] {
+  const rows: DayRow[] = []
+  for (const part of html.split(/<tr[\s>]/i)) {
+    if (!part.includes('<td')) continue
+    const cells: string[] = []
+    const rx = /<td[^>]*>([\s\S]*?)<\/td>/gi
+    let m: RegExpExecArray | null
+    while ((m = rx.exec(part)) !== null) {
+      cells.push(m[1].replace(/<[^>]+>/g, '').trim())
+    }
+    if (cells.length < 2) continue
+    const dm = /(\d{2})\/(\d{2})\/(\d{4})/.exec(cells[0])
+    if (!dm) continue
+    const date  = `${dm[3]}-${dm[2]}-${dm[1]}`
+    const close = parseFloat(cells[1].replace(/[\s ,]/g, '').replace(',', '.'))
+    if (close > 0) rows.push({ date, close })
+  }
+  return rows
+}
+
+async function backfillSikaFinance(
+  symbols: string[],
+): Promise<{ data: Map<string, DayRow[]>; failed: string[] }> {
+  const data:   Map<string, DayRow[]> = new Map()
+  const failed: string[]              = []
+
+  for (const sym of symbols) {
+    try {
+      const url = `https://www.sikafinance.com/marches/historique/${sym.toLowerCase()}`
+      const r   = await fetch(url, {
+        headers: {
+          'Accept':          'text/html',
+          'Accept-Language': 'fr-FR,fr;q=0.9',
+          'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0',
+          'Referer':         'https://www.sikafinance.com/marches/cotations',
+        },
+        signal: AbortSignal.timeout(10_000),
+      })
+      if (!r.ok) { failed.push(sym); continue }
+      const rows = parseSikaHistoricalTable(await r.text())
+      rows.length > 0 ? data.set(sym, rows) : failed.push(sym)
+    } catch { failed.push(sym) }
+    // Délai poli pour éviter le rate-limit SikaFinance
+    await new Promise(res => setTimeout(res, 400))
+  }
+
+  return { data, failed }
+}
+
+/* ── Source 3 : Bulletins mensuels BRVM (Excel) ────────────
+   https://www.brvm.org/fr/bulletins-mensuels
+   → Récupère les liens .xlsx des 3 derniers bulletins
+   → Parse chaque fichier Excel (colonnes : symbole, date, cours)
+   Note : bulletins mensuels = 1 snapshot/mois, utile pour fenêtre longue */
+async function backfillBRVMBulletins(
+  symbols: string[],
+): Promise<{ data: Map<string, DayRow[]>; failed: string[] }> {
+  let XLSX: typeof import('xlsx')
+  try { XLSX = await import('xlsx') }
+  catch { return { data: new Map(), failed: [...symbols] } }
+
+  const data:   Map<string, DayRow[]> = new Map()
+  const symSet  = new Set(symbols)
+
+  try {
+    const listPage = await fetch('https://www.brvm.org/fr/bulletins-mensuels', {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' },
+      signal: AbortSignal.timeout(12_000),
+    })
+    if (!listPage.ok) throw new Error(`HTTP ${listPage.status}`)
+    const html = await listPage.text()
+
+    // Extraire les 3 premiers liens .xlsx/.xls trouvés
+    const linkRx = /href="([^"]+\.xlsx?)"/gi
+    const links: string[] = []
+    let lm: RegExpExecArray | null
+    while ((lm = linkRx.exec(html)) !== null && links.length < 3) {
+      links.push(lm[1].startsWith('http') ? lm[1] : `https://www.brvm.org${lm[1]}`)
+    }
+
+    for (const link of links) {
+      try {
+        const resp = await fetch(link, { signal: AbortSignal.timeout(20_000) })
+        if (!resp.ok) continue
+        const wb   = XLSX.read(new Uint8Array(await resp.arrayBuffer()), { type: 'array' })
+
+        for (const sheetName of wb.SheetNames) {
+          const rows = XLSX.utils.sheet_to_json<string[]>(
+            wb.Sheets[sheetName], { header: 1, raw: false }
+          )
+          for (const row of rows) {
+            if (!row || row.length < 3) continue
+            const sym   = String(row[0] ?? '').trim()
+            if (!symSet.has(sym)) continue
+            const dm    = /(\d{2})\/(\d{2})\/(\d{4})/.exec(String(row[1] ?? ''))
+            if (!dm) continue
+            const date  = `${dm[3]}-${dm[2]}-${dm[1]}`
+            const close = parseFloat(String(row[2] ?? '').replace(/[\s,]/g, '').replace(',', '.'))
+            if (close <= 0) continue
+            const existing = data.get(sym) ?? []
+            existing.push({ date, close })
+            data.set(sym, existing)
+          }
+        }
+      } catch { continue }
+    }
+  } catch (e: any) {
+    console.warn('[BRVM backfill bulletins]', e.message)
+  }
+
+  return { data, failed: symbols.filter(s => !data.has(s)) }
+}
+
+/* ── Orchestrateur principal ────────────────────────────────
+   Waterfall : EODHD → SikaFinance → Bulletins BRVM
+   Seuls les symboles échoués sont transmis à la source suivante */
+export async function runBackfill(): Promise<BackfillResult> {
+  const t0     = Date.now()
+  const today  = new Date().toISOString().split('T')[0]
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 90)
+  const from   = cutoff.toISOString().split('T')[0]
+
+  const allSymbols = Object.keys(BRVM_COMPANIES)
+  let   remaining  = [...allSymbols]
+  const report:    BackfillResult['sources'] = []
+  let   totalRows  = 0
+
+  // ── Source 1 : EODHD ──────────────────────────────────────
+  try {
+    const { data, failed } = await backfillEOHDD(remaining, from, today)
+    const rows = await upsertRows(data)
+    report.push({ name: 'eodhd', symbols: data.size, rows })
+    totalRows += rows; remaining = failed
+    console.log(`[BRVM backfill] EODHD: ${data.size} symboles, ${rows} rows`)
+  } catch (e: any) {
+    report.push({ name: 'eodhd', symbols: 0, rows: 0, error: e.message })
+  }
+
+  // ── Source 2 : SikaFinance (symboles non couverts) ────────
+  if (remaining.length > 0) {
+    try {
+      const { data, failed } = await backfillSikaFinance(remaining)
+      const rows = await upsertRows(data)
+      report.push({ name: 'sikafinance', symbols: data.size, rows })
+      totalRows += rows; remaining = failed
+      console.log(`[BRVM backfill] SikaFinance: ${data.size} symboles, ${rows} rows`)
+    } catch (e: any) {
+      report.push({ name: 'sikafinance', symbols: 0, rows: 0, error: e.message })
+    }
+  }
+
+  // ── Source 3 : Bulletins BRVM Excel (symboles restants) ──
+  if (remaining.length > 0) {
+    try {
+      const { data, failed } = await backfillBRVMBulletins(remaining)
+      const rows = await upsertRows(data)
+      report.push({ name: 'brvm-bulletins', symbols: data.size, rows })
+      totalRows += rows; remaining = failed
+      console.log(`[BRVM backfill] Bulletins: ${data.size} symboles, ${rows} rows`)
+    } catch (e: any) {
+      report.push({ name: 'brvm-bulletins', symbols: 0, rows: 0, error: e.message })
+    }
+  }
+
+  const covered = allSymbols.length - remaining.length
+  console.log(`[BRVM backfill] Terminé — ${covered}/${allSymbols.length} symboles, ${totalRows} rows, ${Date.now()-t0}ms`)
+  return {
+    success:    totalRows > 0,
+    sources:    report,
+    total:      { symbols: covered, rows: totalRows },
+    durationMs: Date.now() - t0,
+  }
+}
+
 /* ── Statut du cache ────────────────────────────────────── */
 export async function getCacheStatus() {
   const row = await prisma.bRVMCache.findUnique({ where: { id: CACHE_KEY } }).catch(() => null)

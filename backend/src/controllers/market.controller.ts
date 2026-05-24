@@ -11,7 +11,7 @@ import { getAllGovernanceScores, computeGovernanceScore }     from '../services/
 import { simulateTransactionCost }                           from '../services/market/providers/brvm-transaction-cost.provider'
 import { getUSMacroDashboard } from '../services/market/providers/fred.provider'
 import {
-  getCacheStatus, refreshBRVMData,
+  getCacheStatus, refreshBRVMData, runBackfill,
 } from '../services/brvm-cron.service'
 import prisma from '../config/prisma'
 
@@ -164,6 +164,21 @@ export const brvmRefresh = async (req: Request, res: Response) => {
   }
   try {
     const result = await refreshBRVMData()
+    res.json(result)
+  } catch (e: any) {
+    res.status(500).json({ message: e.message })
+  }
+}
+
+// POST /market/brvm/backfill — seed 90 jours d'historique (CRON_SECRET requis)
+export const brvmBackfill = async (req: Request, res: Response) => {
+  const received = ((req.headers['x-cron-secret'] as string) ?? '').trim()
+  const expected = (process.env.CRON_SECRET ?? '').trim()
+  if (!expected || received !== expected) {
+    return res.status(401).json({ message: 'CRON_SECRET invalide ou manquant' })
+  }
+  try {
+    const result = await runBackfill()
     res.json(result)
   } catch (e: any) {
     res.status(500).json({ message: e.message })

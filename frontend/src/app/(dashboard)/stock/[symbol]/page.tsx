@@ -12,11 +12,21 @@ import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { PctBadge } from '@/components/ui/PctBadge'
+import dynamic from 'next/dynamic'
 import StockChart from './components/StockChart'
 import OverviewTab from './components/OverviewTab'
-import FundamentalsTab from './components/FundamentalsTab'
-import NewsTab from './components/NewsTab'
-import TechnicalTab from './components/TechnicalTab'
+
+const TabSkeleton = () => (
+  <div className="p-4 space-y-3">
+    {[...Array(5)].map((_, i) => (
+      <div key={i} className="bg-[var(--fin-hover)] animate-pulse rounded h-8" />
+    ))}
+  </div>
+)
+
+const FundamentalsTab = dynamic(() => import('./components/FundamentalsTab'), { loading: TabSkeleton })
+const TechnicalTab    = dynamic(() => import('./components/TechnicalTab'),    { loading: TabSkeleton })
+const NewsTab         = dynamic(() => import('./components/NewsTab'),         { loading: TabSkeleton })
 
 /* ── Types ──────────────────────────────────────────────────────── */
 interface Quote {

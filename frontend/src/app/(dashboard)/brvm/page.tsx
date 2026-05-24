@@ -13,11 +13,18 @@ import {
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import {
-  ScoreGauge, GovernanceGauge, KPICounter,
-  DividendBarChart, DividendBarChartFull,
-  AfricaRadarChart, SectorPieChart, CorrelationHeatmap,
-} from '@/components/brvm/BRVMCharts'
+import dynamic from 'next/dynamic'
+
+const ChartSkeleton = () => <div className="bg-[var(--fin-hover)] animate-pulse rounded h-40 w-full" />
+
+const ScoreGauge        = dynamic(() => import('@/components/brvm/BRVMCharts').then(m => ({ default: m.ScoreGauge })),        { loading: ChartSkeleton, ssr: false })
+const GovernanceGauge   = dynamic(() => import('@/components/brvm/BRVMCharts').then(m => ({ default: m.GovernanceGauge })),   { loading: ChartSkeleton, ssr: false })
+const KPICounter        = dynamic(() => import('@/components/brvm/BRVMCharts').then(m => ({ default: m.KPICounter })),        { loading: ChartSkeleton, ssr: false })
+const DividendBarChart  = dynamic(() => import('@/components/brvm/BRVMCharts').then(m => ({ default: m.DividendBarChart })),  { loading: ChartSkeleton, ssr: false })
+const DividendBarChartFull = dynamic(() => import('@/components/brvm/BRVMCharts').then(m => ({ default: m.DividendBarChartFull })), { loading: ChartSkeleton, ssr: false })
+const AfricaRadarChart  = dynamic(() => import('@/components/brvm/BRVMCharts').then(m => ({ default: m.AfricaRadarChart })),  { loading: ChartSkeleton, ssr: false })
+const SectorPieChart    = dynamic(() => import('@/components/brvm/BRVMCharts').then(m => ({ default: m.SectorPieChart })),    { loading: ChartSkeleton, ssr: false })
+const CorrelationHeatmap= dynamic(() => import('@/components/brvm/BRVMCharts').then(m => ({ default: m.CorrelationHeatmap })),{ loading: ChartSkeleton, ssr: false })
 
 /* ── Types ──────────────────────────────────────────────── */
 interface BRVMQuote     { symbol:string; name:string; price:number; change:number; changePercent:number; volume:number; marketCap?:number; sector:string; country:string; currency:string }

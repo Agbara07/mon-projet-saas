@@ -27,3 +27,4 @@ jobs:
           upload-results: true
           exclude-directories: "node_modules,dist,.next"
           claudecode-timeout: "30"
+          run-every-commit: "true"

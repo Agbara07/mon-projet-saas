@@ -331,6 +331,25 @@ Railway utilise `rootDirectory: backend` configuré dans le service — le CLI d
 `loadPortfolio` et `loadHistory` sont deux fonctions async séparées dans `portfolio/page.tsx`.
 `loadHistory` a son propre try/catch pour ne pas bloquer le portfolio en cas d'erreur réseau.
 
+## CI / GitHub Actions
+
+Deux workflows dans `.github/workflows/` :
+
+| Fichier | Déclencheur | Rôle |
+|---------|-------------|------|
+| `brvm-refresh.yml` | Cron toutes les 15 min (lun-ven 09h-15h30 UTC) | Rafraîchit les données BRVM via `POST /api/market/brvm/refresh` |
+| `security-review.yml` | Chaque PR + push sur `master` | Claude analyse les changements et commente les failles de sécurité |
+
+### Security Review — secrets requis
+
+| Secret GitHub | Utilisation |
+|---------------|-------------|
+| `CLAUDE_SECURITY_REVIEW_API_KEY` | Clé API Anthropic pour `claude-code-security-review` |
+| `BRVM_CRON_SECRET` | Header `x-cron-secret` pour authentifier le cron BRVM |
+
+### Failles détectées automatiquement
+Injections SQL, clés API hardcodées, logs de données sensibles, routes sans auth, XSS, crypto faible.
+
 ## Déploiement
 
 ### Railway (backend)

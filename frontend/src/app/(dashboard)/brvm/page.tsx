@@ -14,6 +14,7 @@ import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import dynamic from 'next/dynamic'
+import { Disclaimer } from '@/components/ui/Disclaimer'
 
 const ChartSkeleton = () => <div className="bg-[var(--fin-hover)] animate-pulse rounded h-40 w-full" />
 
@@ -273,6 +274,8 @@ export default function BRVMPage() {
           <RefreshCw size={11} strokeWidth={1.5} className={cn(loading && 'animate-spin')}/>
         </button>
       </div>
+
+      <Disclaimer variant="brvm" className="mx-3 mt-2 mb-1 flex-shrink-0" />
 
       {/* ── Indices strip — BRVM Composite + BRVM 10 ── */}
       {market?.indices && (

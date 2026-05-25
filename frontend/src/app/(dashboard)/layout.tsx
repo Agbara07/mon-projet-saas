@@ -10,6 +10,7 @@ import { CommandPalette, useCommandPalette } from '@/components/ui/CommandPalett
 import { NavigationProgress } from '@/components/ui/NavigationProgress'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { Disclaimer } from '@/components/ui/Disclaimer'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, trialActive, trialDaysLeft, loading: userLoading } = useCurrentUser()
@@ -183,6 +184,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
           </div>
         </header>
+
+        <Disclaimer variant="banner" />
 
         <main id="main-content" role="main" className="flex-1 overflow-auto" tabIndex={-1}>
           {children}

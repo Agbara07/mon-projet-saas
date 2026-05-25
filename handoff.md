@@ -369,6 +369,40 @@ Clés API hardcodées, credentials exposés, logs de données sensibles, injecti
 
 ---
 
+## Conformité légale
+
+### Pages légales (✅ déployées — commit `5432f2a`)
+
+| Route | Fichier | Contenu |
+|-------|---------|---------|
+| `/cgu` | `frontend/src/app/cgu/page.tsx` | 13 articles — droit ivoirien, clause SGI, données BRVM non officielles |
+| `/politique-confidentialite` | `frontend/src/app/politique-confidentialite/page.tsx` | 12 articles — Loi n°2013-450 + RGPD UE 2016/679, ARTCI, DPO |
+
+### Composant Disclaimer (`frontend/src/components/ui/Disclaimer.tsx`)
+
+3 variants disponibles :
+- `banner` — intégré dans `(dashboard)/layout.tsx` → affiché sur **toutes** les pages authentifiées
+- `inline` — à importer à la demande dans n'importe quelle page
+- `brvm` — intégré dans `(dashboard)/brvm/page.tsx` → disclaimer données non officielles CREPMF
+
+```tsx
+<Disclaimer variant="banner" />
+<Disclaimer variant="brvm" className="mx-3 mt-2" />
+<Disclaimer variant="inline" dismissible />
+```
+
+### Cadre réglementaire appliqué
+
+- **AMF-UMOA / CREPMF** : plateforme non agréée SGI — informations à titre éducatif uniquement
+- **Données BRVM** : issues de SikaFinance (scraping sources publiques) — pas d'accord officiel CREPMF
+- **Loi ivoirienne n°2013-450** : protection données personnelles — ARTCI comme autorité de contrôle
+- **RGPD UE 2016/679** : applicable aux utilisateurs européens
+- **Droit applicable** : droit ivoirien — juridiction : Tribunaux d'Abidjan
+- **DPO** : privacy@investsaas.com
+- **Société** : AGBARA CONSORTIUM SARL — RCCM CI-ABJ-03-2025-B13-01915
+
+---
+
 ## Prochaines tâches prioritaires
 
 1. **Configurer les clés API** manquantes dans Railway (voir tableau providers dans CLAUDE.md) — 10 clés vides
@@ -379,4 +413,4 @@ Clés API hardcodées, credentials exposés, logs de données sensibles, injecti
 
 ---
 
-*Dernière mise à jour : 25/05/2026 (session 3 — backfill BRVM + security review)*
+*Dernière mise à jour : 25/05/2026 (session 4 — conformité légale RGPD/AMF-UMOA)*

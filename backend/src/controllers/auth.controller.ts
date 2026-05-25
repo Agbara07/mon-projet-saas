@@ -93,7 +93,11 @@ export const refreshToken = async (req: Request, res: Response) => {
 }
 
 export const logout = async (req: Request, res: Response) => {
-  const { userId } = req.body
-  await prisma.user.update({ where: { id: userId }, data: { refreshToken: null } })
+  const auth = req.headers.authorization?.split(' ')[1]
+  if (!auth) return res.status(401).json({ message: 'Token manquant' })
+  try {
+    const payload = jwt.verify(auth, process.env.JWT_SECRET!) as { userId: string }
+    await prisma.user.update({ where: { id: payload.userId }, data: { refreshToken: null } })
+  } catch { /* token expiré — on invalide quand même côté client */ }
   res.json({ message: 'Déconnecté' })
 }

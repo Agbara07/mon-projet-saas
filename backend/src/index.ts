@@ -1,3 +1,4 @@
+import path from 'path'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -17,13 +18,20 @@ import { initWebSocket } from './services/websocket.service'
 import { startAlertEngine } from './services/alert.service'
 import { startBRVMCron } from './services/brvm-cron.service'
 
-dotenv.config()
+// Charge le .env racine en local (Railway injecte les vars directement — no-op si absent)
+dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 
 const app = express()
 const PORT = process.env.PORT || 4000
 
 app.use(helmet())
-app.use(cors({ origin: process.env.FRONTEND_URL }))
+app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }))
+
+// Le webhook Stripe DOIT recevoir le body RAW pour que constructEvent() valide la signature.
+// Il faut le monter AVANT app.use(express.json()) qui consommerait le body en premier.
+import { handleWebhook } from './controllers/billing.controller'
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), handleWebhook)
+
 app.use(express.json())
 
 // Rate limiting — auth : 20 req/15min, API globale : 200 req/min

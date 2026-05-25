@@ -28,7 +28,10 @@ export const createPortfolio = handle(async (req, res) => {
 })
 
 export const deletePortfolio = handle(async (req, res) => {
-  await prisma.portfolio.delete({ where: { id: req.params.id } })
+  const deleted = await prisma.portfolio.deleteMany({
+    where: { id: req.params.id, userId: req.user!.userId },
+  })
+  if (deleted.count === 0) return res.status(404).json({ message: 'Introuvable' })
   res.json({ message: 'Portefeuille supprimé' })
 })
 
@@ -112,6 +115,11 @@ export const addHolding = handle(async (req, res) => {
 })
 
 export const removeHolding = handle(async (req, res) => {
-  await prisma.holding.delete({ where: { id: req.params.holdingId } })
+  // Vérifie que le holding appartient à un portfolio de l'utilisateur
+  const holding = await prisma.holding.findFirst({
+    where: { id: req.params.holdingId, portfolio: { userId: req.user!.userId } },
+  })
+  if (!holding) return res.status(404).json({ message: 'Introuvable' })
+  await prisma.holding.delete({ where: { id: holding.id } })
   res.json({ message: 'Position supprimée' })
 })

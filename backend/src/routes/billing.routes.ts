@@ -1,10 +1,10 @@
-import express, { Router } from 'express'
-import { createCheckoutSession, createPortalSession, handleWebhook, getSubscriptionInfo } from '../controllers/billing.controller'
+import { Router } from 'express'
+import { createCheckoutSession, createPortalSession, getSubscriptionInfo } from '../controllers/billing.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 
 const router = Router()
 
-router.post('/webhook', express.raw({ type: 'application/json' }), handleWebhook)
+// /webhook est monté directement dans index.ts AVANT express.json() pour recevoir le body raw.
 router.use(authenticate)
 router.get('/info',     getSubscriptionInfo)
 router.post('/checkout', createCheckoutSession)

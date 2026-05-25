@@ -180,6 +180,7 @@ Organization (plan, trialEndsAt)
   └── Subscription (Stripe: stripeCustomerId, stripeSubscriptionId)
 
 BRVMCache (quotes JSON, source, itemCount)   ← alimenté par cron 15min
+BRVMPriceHistory (symbol, date, close, volume @@unique[symbol,date]) ← backfill + snapshot daily
 ```
 
 **Plans :** `FREE` / `STARTER` / `PRO` / `ADVISOR` / `ENTERPRISE`
@@ -227,7 +228,7 @@ POST   /api/billing/webhook               ← Stripe webhook
 
 | Plan | Portfolios | Alertes | Watchlist |
 |------|-----------|---------|-----------|
-| FREE | 1 | 3 | 10 |
+| FREE | 1 | 5 | 10 |
 | STARTER | 3 | 10 | 50 |
 | PRO | 10 | 50 | 200 |
 | ADVISOR | illimité | illimité | illimité |
@@ -276,6 +277,18 @@ Pattern définitif : `hidden lg:flex` pour desktop + `{mobileOpen && ...}` pour 
 
 ### 8. JWT payload — champ `userId`
 Dans les middleware, utiliser `req.user?.userId` (pas `req.user?.id`). La payload JWT contient `userId`, pas `id`.
+
+### 9. Backend local — CRON_SECRET non chargé
+`dotenv.config()` cherche `backend/.env` (inexistant). En dev local, démarrer ainsi :
+```powershell
+$env:CRON_SECRET = "BrvmCron2026InvestSaas"; npm run dev
+```
+Sur Railway, les env vars sont injectées directement — aucun `.env` nécessaire.
+
+### 10. Backfill BRVM — SikaFinance URL correcte
+URL historique : `/marches/historiques/{SYM}.{cc}` (pluriel, symbole majuscule, suffixe pays).
+L'ancienne URL `/marches/historique/{sym}` retourne 404. Ne pas revenir en arrière.
+Suffixes pays : `ci` Côte d'Ivoire, `sn` Sénégal, `bf` Burkina, `bj` Bénin, `tg` Togo, `ml` Mali, `ne` Niger, `gw` Guinée-Bissau.
 
 ---
 
@@ -337,8 +350,8 @@ Lancer avec `/nom-du-skill` dans Claude Code :
 ### Security Review — configuration
 
 - **Action** : `anthropics/claude-code-security-review@main`
-- **Secret GitHub requis** : `CLAUDE_SECURITY_REVIEW_API_KEY` (clé API Anthropic)
-- **Paramètres actifs** : `comment-pr: true`, `run-every-commit: true`, `claudecode-timeout: 30`
+- **Secret GitHub requis** : `CLAUDE_API_KEY` (clé API Anthropic — nom exact dans le workflow)
+- **Paramètres actifs** : `comment-pr: true`, `upload-results: true`, `claudecode-timeout: 30`
 - **Répertoires exclus** : `node_modules`, `dist`, `.next`
 
 ### Failles détectées automatiquement
@@ -359,10 +372,11 @@ Clés API hardcodées, credentials exposés, logs de données sensibles, injecti
 ## Prochaines tâches prioritaires
 
 1. **Configurer les clés API** manquantes dans Railway (voir tableau providers dans CLAUDE.md) — 10 clés vides
-2. **Tests backend** — coverage sur controllers + services market
-3. **Notifications email** — alertes par email (SendGrid ou Resend)
-4. **Export portfolio** — CSV/PDF des holdings et P&L
+2. **Backfill Railway** — déclencher `POST /api/market/brvm/backfill` sur Railway pour seeder la BDD de prod (même données que local)
+3. **Tests backend** — coverage sur controllers + services market
+4. **Notifications email** — alertes par email (SendGrid ou Resend)
+5. **Export portfolio** — CSV/PDF des holdings et P&L
 
 ---
 
-*Dernière mise à jour : 25/05/2026 (session 3 — security review workflow)*
+*Dernière mise à jour : 25/05/2026 (session 3 — backfill BRVM + security review)*

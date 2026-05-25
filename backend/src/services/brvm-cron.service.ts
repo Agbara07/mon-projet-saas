@@ -424,7 +424,7 @@ export async function getCacheStatus() {
     itemCount:      row?.itemCount    ?? 0,
     updatedAt:      row?.updatedAt    ?? null,
     ageMinutes:     ageMin,
-    isFresh:        ageMin !== null && ageMin < 20,
+    isFresh:        ageMin !== null && ageMin < (isMarketOpen() ? 20 : 70),
     isMarketOpen:   isMarketOpen(),
     nextMarketOpen: nextMarketOpen(),
     schedule:       'Séance: toutes les 15min | Hors séance: toutes les heures',

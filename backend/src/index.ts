@@ -25,7 +25,22 @@ const app = express()
 const PORT = process.env.PORT || 4000
 
 app.use(helmet())
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }))
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+]
+app.use(cors({
+  origin: (origin, cb) => {
+    // Autorise les requêtes sans origine (curl, Postman, mobile) et les origines Vercel preview
+    if (!origin || allowedOrigins.includes(origin) || /\.vercel\.app$/.test(origin)) {
+      cb(null, true)
+    } else {
+      cb(new Error(`CORS: origine non autorisée : ${origin}`))
+    }
+  },
+  credentials: true,
+}))
 
 // Le webhook Stripe DOIT recevoir le body RAW pour que constructEvent() valide la signature.
 // Il faut le monter AVANT app.use(express.json()) qui consommerait le body en premier.

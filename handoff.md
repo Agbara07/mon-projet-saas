@@ -325,6 +325,37 @@ Lancer avec `/nom-du-skill` dans Claude Code :
 
 ---
 
+## CI / Sécurité automatique
+
+### Workflows GitHub Actions
+
+| Fichier | Déclencheur | Rôle |
+|---------|-------------|------|
+| `brvm-refresh.yml` | Cron 15min (lun-ven 09h-15h30 UTC) | Rafraîchit les données BRVM |
+| `security-review.yml` | Chaque PR + push `master` | Claude analyse les failles de sécurité |
+
+### Security Review — configuration
+
+- **Action** : `anthropics/claude-code-security-review@main`
+- **Secret GitHub requis** : `CLAUDE_SECURITY_REVIEW_API_KEY` (clé API Anthropic)
+- **Paramètres actifs** : `comment-pr: true`, `run-every-commit: true`, `claudecode-timeout: 30`
+- **Répertoires exclus** : `node_modules`, `dist`, `.next`
+
+### Failles détectées automatiquement
+
+Clés API hardcodées, credentials exposés, logs de données sensibles, injection SQL, routes sans auth, XSS, crypto faible.
+
+### Testé le 25/05/2026
+
+5 failles HIGH détectées et commentées sur la PR de test :
+- Clé API hardcodée → `HIGH / hardcoded_secrets`
+- Credentials DB exposés → `HIGH / hardcoded_secrets`
+- Log mot de passe utilisateur → `HIGH / sensitive_data_exposure`
+- Injection SQL → `HIGH / sql_injection`
+- Route admin sans auth → `HIGH / broken_authorization`
+
+---
+
 ## Prochaines tâches prioritaires
 
 1. **Configurer les clés API** manquantes dans Railway (voir tableau providers dans CLAUDE.md) — 10 clés vides
@@ -334,4 +365,4 @@ Lancer avec `/nom-du-skill` dans Claude Code :
 
 ---
 
-*Dernière mise à jour : 24/05/2026 (session 2)*
+*Dernière mise à jour : 25/05/2026 (session 3 — security review workflow)*

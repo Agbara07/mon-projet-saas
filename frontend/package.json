@@ -2,7 +2,7 @@
   "name": "investsaas-frontend",
   "version": "1.0.0",
   "scripts": {
-    "predev": "kill-port 3000 || true",
+    "predev": "node scripts/predev.js",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

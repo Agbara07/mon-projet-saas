@@ -169,7 +169,7 @@ export default function WatchlistPage() {
             </button>
           </div>
         ) : (
-          <table className="w-full">
+          <table className="w-full min-w-[560px]">
             <thead className={cn('sticky top-0 z-10 border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
               <tr>
                 <SH col="symbol"        label="Ticker"/>
@@ -179,7 +179,7 @@ export default function WatchlistPage() {
                 <SH col="marketCap"     label="Mkt Cap"   right/>
                 <SH col="pe"            label="P/E"       right/>
                 {/* Sparkline 7j — Koyfin signature */}
-                <th className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[var(--fin-t3)] w-24 text-right">7J</th>
+                <th className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[var(--fin-t3)] w-24 text-right hidden sm:table-cell">7J</th>
                 <th className="px-3 py-1.5 w-16"/>
               </tr>
             </thead>
@@ -223,7 +223,7 @@ export default function WatchlistPage() {
                       </span>
                     </td>
                     {/* Sparkline Koyfin — générée depuis price+change */}
-                    <td className="px-3">
+                    <td className="px-3 hidden sm:table-cell">
                       <div className="flex justify-end">
                         {live > 0 && (
                           <Sparkline

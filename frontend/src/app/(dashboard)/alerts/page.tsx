@@ -398,7 +398,7 @@ export default function AlertsPage() {
             )}
           </div>
         ) : (
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead className={cn('sticky top-0 z-10', 'bg-[var(--fin-surface)] border-b border-[var(--fin-border)]')}>
               <tr>
                 <TH col="symbol"    label="Symbole"    className="pl-4 w-24"/>
@@ -406,7 +406,7 @@ export default function AlertsPage() {
                 <TH col="condition" label="Cond."      className="w-12 text-center"/>
                 <TH col="threshold" label="Seuil cible" className="w-28 text-right"/>
                 <TH col="active"    label="État"       className="w-32"/>
-                <TH col="createdAt" label="Créé le"    className="w-32"/>
+                <TH col="createdAt" label="Créé le"    className="w-32 hidden sm:table-cell"/>
                 <th className="px-3 py-1.5 w-24 text-right text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--fin-t3)]">Actions</th>
               </tr>
             </thead>
@@ -465,7 +465,7 @@ export default function AlertsPage() {
                       </td>
 
                       {/* Créé le */}
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 hidden sm:table-cell">
                         <span className="font-mono text-[10px] text-[var(--fin-t3)]">
                           {fmtDate(a.triggeredAt || a.createdAt)}
                         </span>

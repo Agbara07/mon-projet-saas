@@ -297,7 +297,7 @@ export default function StockPage() {
       {/* ── Tabs nav ─────────────────────────────────────────── */}
       {!loading && (
         <div className={cn(
-          'flex items-center flex-shrink-0 border-b border-[var(--fin-border)]',
+          'flex items-center flex-shrink-0 border-b border-[var(--fin-border)] overflow-x-auto',
           'bg-[var(--fin-panel)]'
         )}>
           {TABS.map(tab => (
@@ -305,7 +305,7 @@ export default function StockPage() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                'px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors border-b-2 -mb-px',
+                'px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors border-b-2 -mb-px whitespace-nowrap flex-shrink-0',
                 activeTab === tab.key
                   ? 'border-[var(--fin-blue)] text-[var(--fin-blue)]'
                   : 'border-transparent text-[var(--fin-t3)] hover:text-[var(--fin-t2)]'

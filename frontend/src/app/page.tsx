@@ -8,7 +8,7 @@ import {
   Shield, Lock, Zap, Users, BarChart3, ArrowRight, Check,
   ChevronDown, Star, Globe, Cpu, Activity,
   AlertTriangle, Target, Award, Sparkles, Play,
-  Crown, LineChart,
+  Crown, LineChart, Menu, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -366,6 +366,7 @@ function useLiveTicker() {
 /* ─── Main ────────────────────────────────────────────────── */
 export default function Landing() {
   const [scrollY, setScrollY] = useState(0)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const liveTickers = useLiveTicker()
 
   useEffect(()=>{ const h=()=>setScrollY(window.scrollY); window.addEventListener('scroll',h); return ()=>window.removeEventListener('scroll',h) },[])
@@ -386,7 +387,7 @@ export default function Landing() {
       {/* ── Nav ────────────────────────────────────────────── */}
       <motion.nav
         className={cn('fixed top-0 w-full z-50 transition-colors duration-300',
-          scrollY>20?'bg-black/90 backdrop-blur-xl border-b border-white/[.05]':'bg-transparent')}
+          scrollY>20||mobileNavOpen?'bg-black/95 backdrop-blur-xl border-b border-white/[.05]':'bg-transparent')}
         initial={{y:-60,opacity:0}} animate={{y:0,opacity:1}} transition={{duration:.5,ease:'easeOut'}}>
         <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
@@ -409,15 +410,47 @@ export default function Landing() {
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
             <Link href="/login" className="hidden sm:block text-sm text-slate-400 hover:text-white transition-colors">
               Connexion
             </Link>
+            <button
+              onClick={() => setMobileNavOpen(v => !v)}
+              aria-label="Menu de navigation"
+              aria-expanded={mobileNavOpen}
+              className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg border border-white/10 text-zinc-400 hover:text-white hover:border-white/20 transition-colors"
+            >
+              {mobileNavOpen ? <X size={18}/> : <Menu size={18}/>}
+            </button>
             <Link href="/register" className="bg-white text-black text-sm px-5 py-2.5 rounded-xl font-bold hover:bg-zinc-100 transition-all shadow-lg shadow-white/10 hover:shadow-white/20">
               Commencer
             </Link>
           </div>
         </div>
+
+        {/* Mobile nav panel */}
+        {mobileNavOpen && (
+          <div className="lg:hidden border-t border-white/[.05] px-5 py-3 space-y-1">
+            {[
+              {l:'Fonctionnalités', href:'#features'},
+              {l:'Screener',        href:'#features'},
+              {l:'Alertes',         href:'#features'},
+              {l:'Tarifs',          href:'#pricing'},
+              {l:'FAQ',             href:'#faq'},
+            ].map(item => (
+              <a key={item.l} href={item.href} onClick={() => setMobileNavOpen(false)}
+                className="flex items-center h-11 px-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+                {item.l}
+              </a>
+            ))}
+            <div className="pt-2 border-t border-white/[.04]">
+              <Link href="/login" onClick={() => setMobileNavOpen(false)}
+                className="flex items-center h-11 px-3 text-sm text-zinc-400 hover:text-white rounded-lg transition-colors">
+                Connexion
+              </Link>
+            </div>
+          </div>
+        )}
       </motion.nav>
 
       {/* ── Ticker live ────────────────────────────────────── */}

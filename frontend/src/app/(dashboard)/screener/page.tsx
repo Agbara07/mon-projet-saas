@@ -143,13 +143,15 @@ export default function ScreenerPage() {
         <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">Screener</span>
         <div className="w-px h-3.5 bg-[var(--fin-border)]"/>
 
-        {/* Presets */}
-        {PRESETS.map(p => (
-          <button key={p.label} onClick={() => { setFilters(p.filters); runScreener(p.filters) }}
-            className={cn('flex items-center gap-1 h-5 px-2 rounded text-[9px] font-bold font-mono transition-colors', p.bg, p.color, 'hover:opacity-80')}>
-            {p.label} <span className="opacity-70">{p.tag}</span>
-          </button>
-        ))}
+        {/* Presets — masqués sur mobile pour éviter le débordement */}
+        <div className="hidden sm:flex items-center gap-1">
+          {PRESETS.map(p => (
+            <button key={p.label} onClick={() => { setFilters(p.filters); runScreener(p.filters) }}
+              className={cn('flex items-center gap-1 h-5 px-2 rounded text-[9px] font-bold font-mono transition-colors', p.bg, p.color, 'hover:opacity-80')}>
+              {p.label} <span className="opacity-70">{p.tag}</span>
+            </button>
+          ))}
+        </div>
 
         <div className="flex-1"/>
         {ran && !loading && (
@@ -263,7 +265,7 @@ export default function ScreenerPage() {
             <p className="text-[10px] text-[var(--fin-t3)] mt-1">Élargissez vos critères de filtrage</p>
           </div>
         ) : (
-          <table className="w-full">
+          <table className="w-full min-w-[680px]">
             <thead className={cn('sticky top-0 z-10 border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
               <tr>
                 {COLS.map(col => (
@@ -272,7 +274,8 @@ export default function ScreenerPage() {
                       'px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.08em] cursor-pointer select-none whitespace-nowrap',
                       'text-[var(--fin-t3)] hover:text-[var(--fin-t2)] transition-colors',
                       sortKey===col.key && 'text-[var(--fin-blue)]',
-                      col.right ? 'text-right' : 'text-left'
+                      col.right ? 'text-right' : 'text-left',
+                      (col.key === 'week52High' || col.key === 'week52Low') && 'hidden md:table-cell'
                     )}>
                     {col.label}{sortKey===col.key ? (sortDir==='asc'?' ↑':' ↓') : ''}
                   </th>
@@ -315,10 +318,10 @@ export default function ScreenerPage() {
                     <td className="px-3 text-right">
                       <span className="kf-num text-[10px] text-[var(--fin-t2)]">{s.pe != null ? s.pe.toFixed(1) : '—'}</span>
                     </td>
-                    <td className="px-3 text-right">
+                    <td className="px-3 text-right hidden md:table-cell">
                       <span className="kf-num text-[10px] text-[var(--fin-green)]">{s.week52High != null ? `$${s.week52High.toFixed(2)}` : '—'}</span>
                     </td>
-                    <td className="px-3 text-right">
+                    <td className="px-3 text-right hidden md:table-cell">
                       <span className="kf-num text-[10px] text-[var(--fin-red)]">{s.week52Low != null ? `$${s.week52Low.toFixed(2)}` : '—'}</span>
                     </td>
                     <td className="px-3">

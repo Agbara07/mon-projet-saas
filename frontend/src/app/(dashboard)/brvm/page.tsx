@@ -214,13 +214,14 @@ export default function BRVMPage() {
     } catch { toast.error('Erreur simulation') }
   }
 
-  const TH = ({ col, label, right }: { col:string; label:string; right?:boolean }) => (
+  const TH = ({ col, label, right, className }: { col:string; label:string; right?:boolean; className?:string }) => (
     <th onClick={() => handleSort(col)}
       className={cn(
         'px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.08em] cursor-pointer select-none whitespace-nowrap',
         'text-[var(--fin-t3)] hover:text-[var(--fin-t2)] transition-colors',
         sortKey===col && 'text-[var(--fin-blue)]',
-        right ? 'text-right' : 'text-left'
+        right ? 'text-right' : 'text-left',
+        className
       )}>
       {label}{sortKey===col ? (sortDir==='desc'?' ↓':' ↑') : ''}
     </th>
@@ -233,22 +234,22 @@ export default function BRVMPage() {
     <div className="flex flex-col h-full">
 
       {/* ── Status bar ── */}
-      <div className={cn('flex items-center gap-3 px-4 h-9 flex-shrink-0 border-b border-[var(--fin-border)]','bg-[var(--fin-panel)]')}>
-        <Globe size={11} strokeWidth={1.5} className="text-[var(--fin-t3)]" aria-hidden="true"/>
-        <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">BRVM</span>
-        <div className="w-px h-3.5 bg-[var(--fin-border)]"/>
-        <span className="text-[9px] font-mono text-[var(--fin-t3)]">UEMOA · XOF · 8 pays</span>
-        <div className="w-px h-3.5 bg-[var(--fin-border)]"/>
-        <div className="flex items-center gap-1.5">
+      <div className={cn('flex items-center gap-2 px-3 h-9 flex-shrink-0 border-b border-[var(--fin-border)] overflow-x-auto','bg-[var(--fin-panel)]')}>
+        <Globe size={11} strokeWidth={1.5} className="text-[var(--fin-t3)] flex-shrink-0" aria-hidden="true"/>
+        <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest whitespace-nowrap">BRVM</span>
+        <div className="w-px h-3.5 bg-[var(--fin-border)] flex-shrink-0"/>
+        <span className="text-[9px] font-mono text-[var(--fin-t3)] whitespace-nowrap hidden sm:inline">UEMOA · XOF · 8 pays</span>
+        <div className="w-px h-3.5 bg-[var(--fin-border)] flex-shrink-0 hidden sm:block"/>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <Radio size={9} strokeWidth={1.5} className={isDataFresh?'text-[var(--fin-green)]':'text-[var(--fin-amber)]'}/>
-          <span className={cn('text-[9px] font-mono', isDataFresh?'text-[var(--fin-green)]':'text-[var(--fin-amber)]')}>
-            {isDataFresh ? `${dataSource?.toUpperCase() ?? 'LIVE'}` : 'DONNÉES STATIQUES'}
+          <span className={cn('text-[9px] font-mono whitespace-nowrap', isDataFresh?'text-[var(--fin-green)]':'text-[var(--fin-amber)]')}>
+            {isDataFresh ? `${dataSource?.toUpperCase() ?? 'LIVE'}` : 'STATIQUE'}
           </span>
         </div>
         {market && (
           <>
-            <div className="w-px h-3.5 bg-[var(--fin-border)]"/>
-            <span className="text-[9px] font-mono text-[var(--fin-t3)]">
+            <div className="w-px h-3.5 bg-[var(--fin-border)] flex-shrink-0"/>
+            <span className="text-[9px] font-mono text-[var(--fin-t3)] whitespace-nowrap">
               <span className="text-[var(--fin-green)] font-bold">▲{market.advancers}</span>
               {' / '}
               <span className="text-[var(--fin-red)] font-bold">▼{market.decliners}</span>
@@ -257,19 +258,19 @@ export default function BRVMPage() {
             </span>
           </>
         )}
-        <div className="flex-1"/>
+        <div className="flex-1 min-w-2"/>
         {market && (
-          <span className="text-[9px] font-mono text-[var(--fin-t3)]">
+          <span className="text-[9px] font-mono text-[var(--fin-t3)] whitespace-nowrap hidden sm:inline">
             <span className="text-[var(--fin-t2)]">CAP </span>
             <span className="text-[var(--fin-t1)] font-bold">{fmtXOF(market.totalMarketCap)} XOF</span>
           </span>
         )}
-        <div className="w-px h-3.5 bg-[var(--fin-border)]"/>
+        <div className="w-px h-3.5 bg-[var(--fin-border)] flex-shrink-0"/>
         <button
           onClick={loadCore}
           disabled={loading}
           aria-label="Rafraîchir les données BRVM"
-          className="w-7 h-7 rounded flex items-center justify-center text-[var(--fin-t3)] hover:text-[var(--fin-t1)] hover:bg-[var(--fin-hover)] transition-colors disabled:opacity-40"
+          className="w-7 h-7 rounded flex items-center justify-center text-[var(--fin-t3)] hover:text-[var(--fin-t1)] hover:bg-[var(--fin-hover)] transition-colors disabled:opacity-40 flex-shrink-0"
         >
           <RefreshCw size={11} strokeWidth={1.5} className={cn(loading && 'animate-spin')}/>
         </button>
@@ -456,9 +457,9 @@ export default function BRVMPage() {
                       <TH col="price"         label="Cours XOF"   right/>
                       <TH col="changePercent" label="Var%"         right/>
                       <TH col="volume"        label="Volume"       right/>
-                      <TH col="marketCap"     label="Cap. (M XOF)" right/>
-                      <TH col="sector"        label="Secteur"/>
-                      <TH col="country"       label="Pays"/>
+                      <TH col="marketCap"     label="Cap. (M XOF)" right className="hidden sm:table-cell"/>
+                      <TH col="sector"        label="Secteur"      className="hidden sm:table-cell"/>
+                      <TH col="country"       label="Pays"         className="hidden sm:table-cell"/>
                     </tr>
                   </thead>
                 </table>
@@ -482,9 +483,9 @@ export default function BRVMPage() {
                                 {up?'▲':'▼'}{Math.abs(q.changePercent).toFixed(2)}%
                               </td>
                               <td className="px-3 py-1.5 text-right font-mono text-[var(--fin-t2)] tabular-nums">{fmtVol(q.volume)}</td>
-                              <td className="px-3 py-1.5 text-right font-mono text-[var(--fin-t2)] tabular-nums">{fmtXOF(q.marketCap)}</td>
-                              <td className="px-3 py-1.5"><span className={cn('px-1.5 py-0.5 rounded text-[9px] font-bold font-mono', sectorPill(q.sector))}>{q.sector}</span></td>
-                              <td className="px-3 py-1.5 text-[9px] text-[var(--fin-t3)] font-mono whitespace-nowrap">{COUNTRY_FLAGS[q.country]??''} {q.country}</td>
+                              <td className="px-3 py-1.5 text-right font-mono text-[var(--fin-t2)] tabular-nums hidden sm:table-cell">{fmtXOF(q.marketCap)}</td>
+                              <td className="px-3 py-1.5 hidden sm:table-cell"><span className={cn('px-1.5 py-0.5 rounded text-[9px] font-bold font-mono', sectorPill(q.sector))}>{q.sector}</span></td>
+                              <td className="px-3 py-1.5 text-[9px] text-[var(--fin-t3)] font-mono whitespace-nowrap hidden sm:table-cell">{COUNTRY_FLAGS[q.country]??''} {q.country}</td>
                             </tr></tbody></table>
                           </div>
                         )
@@ -594,7 +595,7 @@ export default function BRVMPage() {
                     </div>
                     {/* Table */}
                     <div className="flex-1 overflow-auto">
-                      <table className="w-full">
+                      <table className="w-full min-w-[620px]">
                         <thead className={cn('sticky top-0 z-10 border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
                           <tr>
                             <th className="px-3 py-1.5 text-left text-[9px] font-bold uppercase tracking-widest text-[var(--fin-t3)] w-8">#</th>
@@ -654,7 +655,7 @@ export default function BRVMPage() {
                 ) : (
                   <>
                     {/* KPI row */}
-                    <div className={cn('grid grid-cols-4 gap-px border-b border-[var(--fin-border)]','bg-[var(--fin-border)]')}>
+                    <div className={cn('grid grid-cols-2 sm:grid-cols-4 gap-px border-b border-[var(--fin-border)]','bg-[var(--fin-border)]')}>
                       {[
                         {label:'Rdt moyen', value:`${(dividends.filter(d=>d.currentYield>0).reduce((s,d)=>s+d.currentYield,0)/(dividends.filter(d=>d.currentYield>0).length||1)).toFixed(2)}%`, sub:'Titres avec dividende'},
                         {label:'Qualifiés 3ans+', value:String(dividends.filter(d=>d.qualified).length), sub:'Dividende ≥3 ans'},
@@ -670,7 +671,7 @@ export default function BRVMPage() {
                     </div>
                     {/* Table */}
                     <div className="flex-1 overflow-auto">
-                      <table className="w-full">
+                      <table className="w-full min-w-[860px]">
                         <thead className={cn('sticky top-0 z-10 border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
                           <tr>
                             {['SYMBOLE','SOCIÉTÉ','COURS XOF','DERNIER DIV.','RENDEMENT','TAUX DISTR.','HISTORIQUE','VALEUR GORDON','SIGNAL','SECTEUR'].map(h=>(
@@ -803,7 +804,7 @@ export default function BRVMPage() {
                       <p className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest mb-2">Radar — métriques normalisées sur 100</p>
                       <AfricaRadarChart markets={africa}/>
                     </div>
-                    <table className="w-full">
+                    <table className="w-full min-w-[600px]">
                       <thead className={cn('border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
                         <tr>
                           {['MARCHÉ','PAYS','DEVISE','P/E','RDT DIV.','PERF YTD','MKT CAP','VOLATILITÉ'].map(h=>(
@@ -853,7 +854,7 @@ export default function BRVMPage() {
                 {macro ? (
                   <div className="flex-1 overflow-auto p-3 space-y-3">
                     {/* KPIs BCEAO */}
-                    <div className={cn('grid grid-cols-4 gap-px border border-[var(--fin-border)] rounded-lg overflow-hidden','bg-[var(--fin-border)]')}>
+                    <div className={cn('grid grid-cols-2 sm:grid-cols-4 gap-px border border-[var(--fin-border)] rounded-lg overflow-hidden','bg-[var(--fin-border)]')}>
                       {[
                         {label:'TAUX BCEAO', value:`${macro.bceaoRate}%`, color:'text-[var(--fin-blue)]',  sub:'Taux directeur'},
                         {label:'INFLATION',  value:`${macro.inflation}%`, color:'text-[var(--fin-amber)]', sub:'Zone UEMOA 2024'},

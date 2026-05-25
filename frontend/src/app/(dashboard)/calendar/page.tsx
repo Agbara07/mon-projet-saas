@@ -67,10 +67,10 @@ export default function CalendarPage() {
     <div className="flex flex-col h-full">
 
       {/* Status bar */}
-      <div className={cn('flex items-center gap-3 px-4 h-9 flex-shrink-0 border-b border-[var(--fin-border)]','bg-[var(--fin-panel)]')}>
-        <Calendar size={11} strokeWidth={1.5} className="text-[var(--fin-t3)]"/>
-        <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">Calendrier Résultats</span>
-        <div className="w-px h-3.5 bg-[var(--fin-border)]"/>
+      <div className={cn('flex items-center gap-3 px-4 h-9 flex-shrink-0 border-b border-[var(--fin-border)] overflow-x-auto','bg-[var(--fin-panel)]')}>
+        <Calendar size={11} strokeWidth={1.5} className="text-[var(--fin-t3)] flex-shrink-0"/>
+        <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest whitespace-nowrap flex-shrink-0">Calendrier Résultats</span>
+        <div className="w-px h-3.5 bg-[var(--fin-border)] flex-shrink-0"/>
         {FILTERS.map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)}
             className={cn(
@@ -101,7 +101,7 @@ export default function CalendarPage() {
         ) : (
           <div>
             {/* Table header fixe */}
-            <table className="w-full sticky">
+            <table className="w-full min-w-[600px] sticky">
               <thead className={cn('border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
                 <tr>
                   <th className="px-3 py-1.5 text-left text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--fin-t3)] w-28">DATE</th>
@@ -141,7 +141,7 @@ export default function CalendarPage() {
                     </div>
 
                     {/* Events for this date */}
-                    <table className="w-full">
+                    <table className="w-full min-w-[600px]">
                       <tbody>
                         {dayEvents.map((e, i) => {
                           const hasRes = e.epsActual != null && e.epsEstimate != null

@@ -193,7 +193,7 @@ export default function PortfolioPage() {
         {selected ? (
           <>
             {/* KPI row */}
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
                 { label:'VALEUR LIVE',   value:`$${totalLive.toFixed(2)}`,               color:'text-[var(--fin-t1)]' },
                 { label:'INVESTI',       value:`$${selected.totalCost.toFixed(2)}`,       color:'text-[var(--fin-t2)]' },
@@ -208,7 +208,7 @@ export default function PortfolioPage() {
             </div>
 
             {/* Chart + Pie */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className={cn('col-span-2 rounded-lg border border-[var(--fin-border)] overflow-hidden','bg-[var(--fin-panel)]')}>
                 <div className={cn('flex items-center gap-3 px-3 py-2 border-b border-[var(--fin-border)]','bg-[var(--fin-surface)]')}>
                   <BarChart3 size={10} strokeWidth={1.5} className="text-[var(--fin-t3)]"/>

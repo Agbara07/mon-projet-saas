@@ -95,12 +95,27 @@ Suivi de l'avancement du projet, mis à jour à chaque session de travail.
 - [x] `brvm-tools.provider.ts` monolithe supprimé (918 lignes → 7 fichiers dédiés)
 - [x] Committé (`ac015ce`) + déployé Railway ✅
 
+### Historique BRVM — Backfill (✅ opérationnel)
+- [x] Modèle Prisma `BRVMPriceHistory` (`@@unique([symbol, date])`) + migration appliquée
+- [x] Route `POST /api/market/brvm/backfill` (CRON_SECRET requis, avant middleware JWT)
+- [x] `backfillSikaFinance` : URL correcte `/marches/historiques/{SYM}.{cc}`, décodage `&#xA0;`, suffixe pays
+- [x] `SIKA_COUNTRY` map : ci/sn/bf/bj/tg/ml/ne/gw
+- [x] Waterfall : SikaFinance → BRVM Bulletins (EODHD retiré — BRVM absent de leurs 73 exchanges)
+- [x] 1 855 lignes seedées (29 symboles × ~64 jours) — corrélations Pearson calculables
+- [x] Committé (`5f4c069`) + déployé Railway ✅
+
+### CI — Security Review (✅ opérationnel)
+- [x] `.github/workflows/security-review.yml` — push `master` + toutes PRs
+- [x] `anthropics/claude-code-security-review@main` avec `secrets.CLAUDE_API_KEY`
+- [x] Exclut `node_modules/dist/.next`, commente les PRs, upload résultats
+
 ---
 
 ## Backlog / À faire
 
 | Priorité | Tâche | Détail |
 |----------|-------|--------|
+| ✅ Fait | Backfill BRVM historique | 1 855 lignes (29 symboles × 64 jours) — Pearson calculable |
 | 🔴 Haute | Configurer clés API manquantes | 10 clés vides : `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, etc. dans `.env` + Railway |
 | 🟡 Moyenne | Tests backend | Coverage sur controllers + services market |
 | 🟢 Basse | Notifications email | Alertes par email (SendGrid / Resend) |
@@ -112,12 +127,24 @@ Suivi de l'avancement du projet, mis à jour à chaque session de travail.
 
 ## Journal des sessions
 
-### Session du 25/05/2026
+### Session du 25/05/2026 (session 2)
+- Backfill BRVM corrigé : suppression `backfillEOHDD` (BRVM absent des 73 exchanges EODHD)
+- Nouvelle URL SikaFinance : `/marches/historiques/{SYM}.{countryCode}` (pluriel + suffixe pays)
+- `parseSikaHistoriques` : décodage `&#xA0;`/`&nbsp;` avant `parseFloat`, extraction volume (cells[5])
+- `SIKA_COUNTRY` map : ci/sn/bf/bj/tg/ml/ne/gw selon `BRVM_COMPANIES[sym].country`
+- Délai 300ms déplacé avant `continue` (ne plus jamais sauté sur HTTP error)
+- Modèle Prisma `BRVMPriceHistory` + migration `20260524225917_add_brvm_price_history`
+- Route `POST /api/market/brvm/backfill` (CRON_SECRET requis)
+- Backfill déclenché localement : **1 855 lignes seedées** (29 symboles × ~64 jours)
+- Corrélations Pearson calculables immédiatement pour 29 symboles (64 pts > 20 minimum)
+- Committé (`5f4c069`) + déployé Railway ✅
+- Security review CI confirmé opérationnel (`secrets.CLAUDE_API_KEY`, non `CLAUDE_SECURITY_REVIEW_API_KEY`)
+
+### Session du 25/05/2026 (session 1)
 - Installé Python 3.12 via winget
 - Configuré `anthropics/claude-code-security-review@main` dans `.github/workflows/security-review.yml`
-- Ajouté secret `CLAUDE_SECURITY_REVIEW_API_KEY` dans GitHub Actions
+- Ajouté secret `CLAUDE_API_KEY` dans GitHub Actions
 - Testé le workflow avec 5 failles volontaires → Claude a commenté les 5 failles HIGH sur la PR
-- Activé `run-every-commit: true` pour désactiver le cache inter-runs
 - Mis à jour `CLAUDE.md` avec section CI/GitHub Actions
 - Mis à jour `handoff.md` avec le security review
 - Nettoyé la branche de test `test/security-review`

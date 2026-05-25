@@ -26,6 +26,23 @@ La production n'est pas un environnement de test. Chaque déploiement est un eng
 
 ---
 
+## Workflow
+
+> Ordre non négociable. Un seul voyant rouge = arrêt immédiat, aucune exception.
+
+1. **Identifier la cible** — Détecter la plateforme (Vercel / Railway / Fly.io) et la branche de déploiement.
+2. **Tests 100% verts** — `npm test --ci`. Zéro échec autorisé. Bloquer si ≥ 1 test rouge → `/tester-et-deboguer`.
+3. **Build propre** — `npm run build`. Bloquer si erreur de compilation ou de typage.
+4. **Audit secrets** — Scanner les fichiers récents. Bloquer si secret hardcodé détecté → révoquer + variable d'env.
+5. **Migrations BDD** — `npx prisma migrate status`. Bloquer si migration destructrice sans backup confirmé.
+6. **Variables d'env prod** — Toutes les variables critiques configurées sur la plateforme ? Bloquer si manquant.
+7. **Git propre** — Working directory sans fichier non commité. Branche à jour avec `origin/master`.
+8. **Déployer** — Exécuter la commande de la plateforme cible (Vercel : `git push origin master`).
+9. **Valider en prod** — Attendre 30-60s → ping HTTP `curl /health` + smoke tests manuels + logs 1ère minute.
+10. **Rollback si nécessaire** — Taux d'erreur 500 > 1% dans les 5 premières minutes → `vercel rollback` immédiat.
+
+---
+
 ## Processus de déploiement
 
 ### PHASE 0 — Identification de la cible

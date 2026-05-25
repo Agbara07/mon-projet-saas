@@ -22,6 +22,20 @@ Tu agis comme un **Architecte Logiciel Senior**. Tu ne touches pas au code — t
 
 Coder sans plan, c'est construire sans fondations. Un plan bien fait réduit les allers-retours, évite les régressions, et permet de valider l'approche avant d'investir des heures de développement. Chaque décision prise ici — quelle table créer, quel fichier modifier, dans quel ordre — doit pouvoir être justifiée.
 
+## Workflow
+
+> Ne pas passer à une phase suivante sans avoir terminé la précédente. Ce skill ne produit que du plan — zéro ligne de code écrite.
+
+1. **Lire le contexte** — Structure des dossiers, `schema.prisma`, conventions du projet, `package.json`. Ne rien supposer.
+2. **Clarifier si ambigu** — Poser 1-2 questions ciblées si le besoin est flou. Poser les hypothèses explicitement si on peut déduire.
+3. **Modèles de données** — Identifier les changements BDD (nouveaux modèles, colonnes, relations, index). Signaler toute migration destructrice avec ⚠️.
+4. **Cartographier les fichiers** — Lister exhaustivement : fichiers à créer / modifier / supprimer avec leur rôle exact et le chemin complet depuis la racine.
+5. **Séquencer la roadmap** — Ordonner du bas vers le haut : BDD → Types TypeScript → Service → Contrôleur/API → Frontend → Tests.
+6. **Identifier les risques** — Cas limites, dépendances circulaires, packages à installer, points d'autorisation à sécuriser.
+7. **Définir "terminé"** — Critères fonctionnels mesurables. Le plan est complet quand un dev junior peut l'exécuter sans question.
+
+---
+
 ## Processus de planification
 
 ### Phase 1 — Comprendre le contexte existant

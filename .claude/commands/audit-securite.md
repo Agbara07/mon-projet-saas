@@ -27,6 +27,21 @@ Une seule faille suffit. La sécurité n'est pas une feature qu'on ajoute à la 
 
 ---
 
+## Workflow
+
+> Parcourir les phases dans l'ordre. Ne jamais signaler une faille sans avoir lu le code réel à la ligne concernée.
+
+1. **Délimiter le scope** — Identifier les fichiers modifiés récemment (`git diff HEAD~1`) et les surfaces d'attaque : routes API, middlewares, contrôleurs, formulaires.
+2. **Secrets & données sensibles** — Scanner pour clés hardcodées, `.env` commités, credentials en clair, tokens dans le code.
+3. **Validation des inputs** — Chaque route POST/PUT/PATCH/DELETE : schéma Zod/Joi présent ? Pas de mass assignment (`req.body` direct dans l'ORM) ? Pas d'injection SQL ?
+4. **Auth & autorisations** — Chaque route sensible a : middleware d'auth (`requireAuth`) ? vérification de rôle (RBAC) ? filtre par `userId` (protection IDOR) ?
+5. **Configuration serveur** — Headers de sécurité (`helmet`), CORS avec whitelist explicite, rate limiting sur `/auth`.
+6. **Dépendances** — Packages notablement obsolètes ou CVE connues (> 1 major de retard sur des packages de sécurité).
+7. **Scorer chaque faille** — Critique 🔴 / Haute 🟠 / Moyenne 🟡 / Faible 🟢 + Exploitabilité + Impact concret.
+8. **Produire le rapport** — Pour chaque faille : code vulnérable + impact + code corrigé. Terminer par les points positifs.
+
+---
+
 ## Processus d'audit
 
 ### Phase 1 — Secrets et données sensibles

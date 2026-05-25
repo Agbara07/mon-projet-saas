@@ -25,6 +25,22 @@ Corriger un symptôme sans comprendre la cause crée une dette invisible qui exp
 
 ---
 
+## Workflow
+
+> Suivre ces étapes dans l'ordre strict. Ne pas écrire de code avant l'étape 5.
+
+1. **Lire** — Lire intégralement la stack trace / log / description. Identifier la première ligne dans le code projet (pas `node_modules`).
+2. **Classifier** — Typer l'erreur (Runtime / Logique / Réseau / BDD / Typage / Environnement) et appliquer l'approche correspondante.
+3. **Isoler la cause racine** — Méthode des 5 Pourquoi. Lire les fichiers impliqués. Ne jamais supposer sans avoir lu.
+4. **Lire les tests existants** — Vérifier si un test couvre déjà le scénario. Identifier les mocks qui pourraient masquer le vrai bug.
+5. **Appliquer le correctif minimal** — Cibler la cause racine, pas le symptôme. Scope = bug uniquement, pas de refactoring.
+6. **Écrire le test de non-régression** — Le test doit être rouge avant le correctif, vert après. Sinon il ne teste rien.
+7. **Lancer les tests ciblés** — `npx jest fichier.test.ts --verbose` d'abord.
+8. **Lancer la suite complète** — `npm test`. Zéro régression autorisée avant de conclure.
+9. **Produire le rapport** — Diagnostic + Correctif + Test + Résultats dans le format standardisé.
+
+---
+
 ## Processus de débogage
 
 ### Phase 1 — Lecture et classification de l'erreur

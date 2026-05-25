@@ -146,6 +146,27 @@ Les providers spécialisés (Benzinga, TMX, ETF Global, BRVM, FMP) sont appelés
 | `/stock/[symbol]` | Terminal View action | ✅ |
 | `/settings` | Paramètres compte | ✅ |
 
+**Toutes les pages sont mobile-responsive** (commit `1ca934f` — 25/05/2026) :
+
+| Page | Pattern appliqué |
+|------|-----------------|
+| Landing | Hamburger `lg:hidden` + slide-down nav panel |
+| Portfolio | KPI grid `grid-cols-2 sm:grid-cols-4`, chart grid `grid-cols-1 sm:grid-cols-3` |
+| Screener | Preset buttons `hidden sm:flex`, table `min-w-[680px]`, colonnes 52H/52L `hidden md:table-cell` |
+| Stock [symbol] | Tabs bar `overflow-x-auto` + `whitespace-nowrap flex-shrink-0` |
+| Watchlist | Table `min-w-[560px]`, colonne sparkline `hidden sm:table-cell` |
+| Alerts | Table `min-w-[600px]`, colonne date `hidden sm:table-cell` |
+| BRVM | Status bar `overflow-x-auto` ; tables min-w (620–860px) ; KPI grids `grid-cols-2 sm:grid-cols-4` ; colonnes Cap/Secteur/Pays `hidden sm:table-cell` dans l'onglet Cotations |
+| Calendar | Status bar `overflow-x-auto`, tables `min-w-[600px]` |
+| Dashboard | Déjà responsive (indices `overflow-x-auto`, grids `lg:grid-cols-3`) |
+| Macro | Déjà responsive (grids `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`) |
+
+Patterns généraux :
+- Tables multi-colonnes → `overflow-auto` parent + `min-w-[Npx]` table (scroll horizontal natif)
+- Colonnes non critiques → `hidden sm:table-cell` / `hidden md:table-cell`
+- Grids denses → `grid-cols-1 sm:grid-cols-N` ou `grid-cols-2 sm:grid-cols-4`
+- Barres d'état surchargées → `overflow-x-auto` + `flex-shrink-0` + `whitespace-nowrap`
+
 ### Terminal View `/stock/[symbol]`
 
 Page la plus complexe — 5 composants :
@@ -413,4 +434,4 @@ Clés API hardcodées, credentials exposés, logs de données sensibles, injecti
 
 ---
 
-*Dernière mise à jour : 25/05/2026 (session 4 — conformité légale RGPD/AMF-UMOA)*
+*Dernière mise à jour : 25/05/2026 (session 5 — responsive mobile toutes pages)*

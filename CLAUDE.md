@@ -378,6 +378,18 @@ cd frontend && npm run dev     # port 3000
 
 <!-- Les entrées ci-dessous sont ajoutées automatiquement par Claude avant chaque compression de contexte -->
 
+### Session du 25/05/2026
+- Responsive mobile complète sur 8 fichiers — commit `1ca934f`, déployé Vercel (push master)
+  - `app/page.tsx` : hamburger `lg:hidden` + slide-down nav panel mobile
+  - `portfolio/page.tsx` : KPI grid `grid-cols-2 sm:grid-cols-4`, chart grid `grid-cols-1 sm:grid-cols-3`
+  - `screener/page.tsx` : presets `hidden sm:flex`, table `min-w-[680px]`, 52H/52L `hidden md:table-cell`
+  - `stock/[symbol]/page.tsx` : tabs bar `overflow-x-auto` + `whitespace-nowrap flex-shrink-0`
+  - `watchlist/page.tsx` : table `min-w-[560px]`, sparkline `hidden sm:table-cell`
+  - `alerts/page.tsx` : table `min-w-[600px]`, date `hidden sm:table-cell`
+  - `brvm/page.tsx` : status bar `overflow-x-auto` ; tables min-w (620–860px) ; KPI grids `grid-cols-2 sm:grid-cols-4` ; TH component + `className` prop ; colonnes Cap/Secteur/Pays `hidden sm:table-cell`
+  - `calendar/page.tsx` : status bar `overflow-x-auto`, tables `min-w-[600px]`
+- `handoff.md` mis à jour avec section responsive + patterns généraux
+
 ### Session du 24/05/2026
 - Migration Next.js 14.2.35 → 15.5.18 + React 18 → 19 (0 changement de code, `remotePatterns` seule modif config, 14 CVEs résolues)
 - Engineering OS intégré dans CLAUDE.md (framework WHY/WHAT/HOW permanent)
@@ -418,4 +430,5 @@ cd frontend && npm run dev     # port 3000
 | ✅ Fait | Migrer `node-cron` 3.x → 4.x | CVE GHSA-w5hq-g745-h8pq — corrigée le 21/05/2026 |
 | ✅ Fait | Migrer Next.js 14 → 15 + React 19 | 0 changement de code — 14 CVEs résolues le 24/05/2026 |
 | ✅ Fait | Router 7 providers BRVM | Committés + déployés Railway le 24/05/2026 |
+| ✅ Fait | Responsive mobile toutes pages | 8 fichiers modifiés, build ✅, déployé Vercel le 25/05/2026 — commit `1ca934f` |
 | 🔴 Prioritaire | Configurer clés API providers | 10 clés vides : `FINNHUB_API_KEY`, `TWELVE_DATA_API_KEY`, etc. dans `.env` + Railway |

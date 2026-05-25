@@ -1,7 +1,20 @@
 import { Response } from 'express'
+import { z } from 'zod'
 import prisma from '../config/prisma'
 import { marketRouter } from '../services/market/market-router'
 import { AuthRequest } from '../middlewares/auth.middleware'
+
+const portfolioSchema = z.object({
+  name:        z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+})
+
+const holdingSchema = z.object({
+  symbol:      z.string().min(1).max(20).toUpperCase(),
+  quantity:    z.number().positive(),
+  avgBuyPrice: z.number().positive(),
+  companyName: z.string().max(200).optional(),
+})
 
 const handle = (fn: (req: AuthRequest, res: Response) => Promise<any>) =>
   async (req: AuthRequest, res: Response) => {
@@ -21,8 +34,11 @@ export const listPortfolios = handle(async (req, res) => {
 })
 
 export const createPortfolio = handle(async (req, res) => {
+  const parsed = portfolioSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message })
+  const { name, description } = parsed.data
   const portfolio = await prisma.portfolio.create({
-    data: { name: req.body.name, description: req.body.description, userId: req.user!.userId },
+    data: { name, description, userId: req.user!.userId },
   })
   res.status(201).json(portfolio)
 })
@@ -83,7 +99,9 @@ export const getPortfolioWithPrices = handle(async (req, res) => {
 })
 
 export const addHolding = handle(async (req, res) => {
-  const { symbol, quantity, avgBuyPrice, companyName } = req.body
+  const parsed = holdingSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message })
+  const { symbol, quantity, avgBuyPrice, companyName } = parsed.data
   const portfolioId = req.params.id
 
   const existing = await prisma.holding.findUnique({

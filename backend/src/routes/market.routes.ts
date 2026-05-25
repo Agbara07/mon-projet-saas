@@ -26,8 +26,10 @@ const router = Router()
 const publicLimiter = rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false })
 router.get('/public/ticker',  publicLimiter, publicTicker)
 // Données de marché publiques — pas user-specific, accessibles sans JWT
-router.get('/overview',  publicLimiter, marketOverview)
-router.get('/earnings',  publicLimiter, earningsCalendar)
+router.get('/overview',       publicLimiter, marketOverview)
+router.get('/earnings',       publicLimiter, earningsCalendar)
+router.get('/macro/us',       publicLimiter, macroUS)
+router.get('/macro/uemoa',    publicLimiter, macroUEMOA)
 router.post('/brvm/refresh',  brvmRefresh)
 router.post('/brvm/backfill', brvmBackfill)
 
@@ -86,10 +88,6 @@ router.get('/:symbol/technical',         technicalIndicators)
 router.get('/:symbol/ratings',           analystRatings)
 router.get('/:symbol/events',            corporateEvents)
 router.get('/:symbol/tsx',               tsxQuote)
-
-// ── Macro-économique ────────────────────────────────────────────
-router.get('/macro/us',    macroUS)    // Fed, CPI, chômage, 10Y, PIB — FRED API
-router.get('/macro/uemoa', macroUEMOA) // BCEAO, inflation UEMOA, PIB zone franc
 
 // ── FMP — Données fondamentales ────────────────────────────────
 router.get('/:symbol/fundamentals',      fundamentals)       // bilans complets 10 ans + estimations + DCF

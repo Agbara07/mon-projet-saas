@@ -65,6 +65,13 @@ Suivi de l'avancement du projet, mis à jour à chaque session de travail.
 ### Tests
 - [x] 24/24 tests frontend (portfolio, watchlist, calendar, settings, billing)
 
+### CI / Sécurité automatique
+- [x] `security-review.yml` — Claude analyse chaque PR/push sur `master`
+- [x] `anthropics/claude-code-security-review@main` configuré + testé
+- [x] Secret `CLAUDE_SECURITY_REVIEW_API_KEY` ajouté dans GitHub
+- [x] 5 failles HIGH détectées et commentées automatiquement sur PR de test
+- [x] `run-every-commit: true` activé pour désactiver le cache
+
 ### Skills Claude Code
 - [x] `audit-securite`, `deployer-prod`, `verifier-sante`, `clarifier-besoin`
 - [x] `planifier-architecture`, `tester-et-deboguer`, `concepteur-ui-ux`
@@ -104,6 +111,16 @@ Suivi de l'avancement du projet, mis à jour à chaque session de travail.
 ---
 
 ## Journal des sessions
+
+### Session du 25/05/2026
+- Installé Python 3.12 via winget
+- Configuré `anthropics/claude-code-security-review@main` dans `.github/workflows/security-review.yml`
+- Ajouté secret `CLAUDE_SECURITY_REVIEW_API_KEY` dans GitHub Actions
+- Testé le workflow avec 5 failles volontaires → Claude a commenté les 5 failles HIGH sur la PR
+- Activé `run-every-commit: true` pour désactiver le cache inter-runs
+- Mis à jour `CLAUDE.md` avec section CI/GitHub Actions
+- Mis à jour `handoff.md` avec le security review
+- Nettoyé la branche de test `test/security-review`
 
 ### Session du 24/05/2026 (session 2)
 - Migration Next.js 14 → 15.5.18 + React 18 → 19 (0 erreur build, 14 CVEs résolues)

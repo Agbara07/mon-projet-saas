@@ -1,6 +1,3 @@
-/* ── Google Fonts — doit précéder tous les autres @rules ───── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -150,7 +147,7 @@ html {
 body {
   background-color: var(--fin-bg);
   color: var(--fin-t1);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-inter, 'Inter'), -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
@@ -168,7 +165,7 @@ body {
 
 /* ── Monospace pour tous les chiffres financiers ───────────── */
 .tabular-nums { font-variant-numeric: tabular-nums; }
-.fin-mono     { font-family: 'JetBrains Mono', 'Roboto Mono', 'SF Mono', monospace; }
+.fin-mono     { font-family: var(--font-mono, 'JetBrains Mono'), 'Roboto Mono', 'SF Mono', monospace; }
 
 /* ── Selection ─────────────────────────────────────────────── */
 ::selection { background: rgba(34,197,94,0.25); color: #fff; }
@@ -272,7 +269,7 @@ details > summary::-webkit-details-marker { display: none; }
 
 /* Nombre financier Koyfin — monospace + tabular nums */
 .kf-num {
-  font-family: 'JetBrains Mono', 'Roboto Mono', 'SF Mono', monospace;
+  font-family: var(--font-mono, 'JetBrains Mono'), 'Roboto Mono', 'SF Mono', monospace;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
   letter-spacing: -0.01em;
@@ -283,7 +280,7 @@ details > summary::-webkit-details-marker { display: none; }
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono, 'JetBrains Mono'), monospace;
   font-variant-numeric: tabular-nums;
   font-size: 10px;
   font-weight: 700;
@@ -299,7 +296,7 @@ details > summary::-webkit-details-marker { display: none; }
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono, 'JetBrains Mono'), monospace;
   font-variant-numeric: tabular-nums;
   font-size: 10px;
   font-weight: 700;
@@ -315,7 +312,7 @@ details > summary::-webkit-details-marker { display: none; }
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono, 'JetBrains Mono'), monospace;
   font-variant-numeric: tabular-nums;
   font-size: 10px;
   font-weight: 600;
@@ -360,7 +357,7 @@ details > summary::-webkit-details-marker { display: none; }
 
 /* Ticker Bloomberg — bold monospace uppercase */
 .bb-ticker {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono, 'JetBrains Mono'), monospace;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;

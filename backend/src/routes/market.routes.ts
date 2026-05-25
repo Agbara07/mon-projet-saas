@@ -25,6 +25,9 @@ const router = Router()
 // ── Routes publiques (pas de JWT) ─────────────────────────
 const publicLimiter = rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false })
 router.get('/public/ticker',  publicLimiter, publicTicker)
+// Données de marché publiques — pas user-specific, accessibles sans JWT
+router.get('/overview',  publicLimiter, marketOverview)
+router.get('/earnings',  publicLimiter, earningsCalendar)
 router.post('/brvm/refresh',  brvmRefresh)
 router.post('/brvm/backfill', brvmBackfill)
 
@@ -33,8 +36,6 @@ router.use(authenticate)
 
 // ── Core ───────────────────────────────────────────────────
 router.get('/status',    providersStatus)
-router.get('/overview',  marketOverview)
-router.get('/earnings',  earningsCalendar)
 router.get('/search',    search)
 router.get('/screener',  screener)
 

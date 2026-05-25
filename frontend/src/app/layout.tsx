@@ -1,8 +1,23 @@
 import type { Metadata, Viewport } from 'next'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import { Toaster } from 'sonner'
 import Providers from './providers'
 import { UpgradeModal } from '@/components/ui/UpgradeModal'
 import './globals.css'
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['300','400','500','600','700','800','900'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400','500','600'],
+  variable: '--font-mono',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'InvestSaaS — Investissez intelligemment',
@@ -27,12 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // suppressHydrationWarning évite le crash React quand ThemeProvider
     // modifie className="dark" côté client après le rendu serveur
     <html lang="fr" className="dark" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com"/>
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
-      </head>
-      <body suppressHydrationWarning>
+      <body className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
         <Providers>
           {children}
           <UpgradeModal />

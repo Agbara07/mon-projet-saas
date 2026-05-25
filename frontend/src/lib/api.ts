@@ -57,7 +57,11 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    if (error.response?.status === 401) {
+    // Ne pas intercepter les 401 des routes auth — laisser le formulaire gérer l'erreur
+    const url = error.config?.url ?? ''
+    const isAuthRoute = /\/auth\/(login|register|refresh)/.test(url)
+
+    if (error.response?.status === 401 && !isAuthRoute) {
       const refresh = localStorage.getItem('refreshToken')
       if (refresh) {
         try {

@@ -1,9 +1,10 @@
+import './env' // MUST be first — charge .env avant que les providers lisent process.env
 import path from 'path'
 import express from 'express'
+import compression from 'compression' // gzip: -70% payload
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
-import dotenv from 'dotenv'
 import { createServer } from 'http'
 import authRoutes from './routes/auth.routes'
 import userRoutes from './routes/user.routes'
@@ -18,12 +19,10 @@ import { initWebSocket } from './services/websocket.service'
 import { startAlertEngine } from './services/alert.service'
 import { startBRVMCron } from './services/brvm-cron.service'
 
-// Charge le .env racine en local (Railway injecte les vars directement — no-op si absent)
-dotenv.config({ path: path.resolve(__dirname, '../../.env') })
-
 const app = express()
 const PORT = process.env.PORT || 4000
 
+app.use(compression())
 app.use(helmet())
 const allowedOrigins = [
   'http://localhost:3000',

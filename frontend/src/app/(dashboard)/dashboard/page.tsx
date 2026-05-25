@@ -68,13 +68,15 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 }
 
 export default function DashboardPage() {
-  const [user,      setUser]      = useState<User|null>(null)
-  const [indices,   setIndices]   = useState<Index[]>([])
-  const [earnings,  setEarnings]  = useState<EarningsEvent[]>([])
-  const [watchlist, setWatchlist] = useState<WatchItem[]>([])
-  const [history,   setHistory]   = useState<{ date:string; close:number }[]>([])
-  const [chartSym,  setChartSym]  = useState('SPY')
-  const [now,       setNow]       = useState('')
+  const [user,           setUser]           = useState<User|null>(null)
+  const [indices,        setIndices]        = useState<Index[]>([])
+  const [earnings,       setEarnings]       = useState<EarningsEvent[]>([])
+  const [watchlist,      setWatchlist]      = useState<WatchItem[]>([])
+  const [history,        setHistory]        = useState<{ date:string; close:number }[]>([])
+  const [chartSym,       setChartSym]       = useState('SPY')
+  const [now,            setNow]            = useState('')
+  const [earningsLoaded, setEarningsLoaded] = useState(false)
+  const [watchlistLoaded,setWatchlistLoaded]= useState(false)
 
   useEffect(() => {
     const tick = () => setNow(new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }))
@@ -86,8 +88,14 @@ export default function DashboardPage() {
   useEffect(() => {
     api.get('/users/me').then(r => setUser(r.data)).catch(() => {})
     api.get('/market/overview').then(r => setIndices((r.data as Index[]).slice(0, 5))).catch(() => {})
-    api.get('/market/earnings').then(r => setEarnings((r.data as EarningsEvent[]).slice(0, 10))).catch(() => {})
-    api.get('/watchlist').then(r => setWatchlist((r.data as WatchItem[]).slice(0, 8))).catch(() => {})
+    api.get('/market/earnings')
+      .then(r => setEarnings((r.data as EarningsEvent[]).slice(0, 10)))
+      .catch(() => {})
+      .finally(() => setEarningsLoaded(true))
+    api.get('/watchlist')
+      .then(r => setWatchlist((r.data as WatchItem[]).slice(0, 8)))
+      .catch(() => {})
+      .finally(() => setWatchlistLoaded(true))
     api.get('/market/SPY/historical?period=1mo').then(r => setHistory(r.data as { date:string; close:number }[])).catch(() => {})
   }, [])
 
@@ -219,17 +227,23 @@ export default function DashboardPage() {
               </Link>
             </div>
             {watchlist.length === 0 ? (
-              /* Skeleton immersif : table pré-remplie avec placeholder animé */
-              <div role="status" aria-label="Watchlist vide — chargement en attente">
-                {Array.from({ length: 5 }).map((_, i) => <SkeletonWatchRow key={i}/>)}
-                <div className="flex items-center justify-center py-2">
+              !watchlistLoaded ? (
+                /* Skeleton pendant le chargement */
+                <div role="status" aria-label="Chargement de la watchlist">
+                  {Array.from({ length: 5 }).map((_, i) => <SkeletonWatchRow key={i}/>)}
+                </div>
+              ) : (
+                /* Vide confirmé — CTA clair */
+                <div className="flex flex-col items-center justify-center py-8 gap-2">
+                  <Eye size={20} strokeWidth={1} className="text-[var(--fin-t3)] opacity-40"/>
+                  <p className="text-[10px] text-[var(--fin-t3)] font-mono">Watchlist vide</p>
                   <Link href="/watchlist"
                     className="flex items-center gap-1 text-[10px] text-[var(--fin-blue)] hover:opacity-80 font-mono font-bold"
                     aria-label="Ajouter des titres à la watchlist">
                     + Ajouter des titres
                   </Link>
                 </div>
-              </div>
+              )
             ) : (
               <div>
                 {watchlist.map((w, i) => (
@@ -281,9 +295,15 @@ export default function DashboardPage() {
                 <div key={col.title}>
                   <p className="px-3 py-1.5 text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest border-b border-[var(--fin-border)] bg-[var(--fin-surface)]">{col.title}</p>
                   {col.data.length === 0 ? (
-                    <div role="status" aria-label="Données en cours de chargement">
-                      {Array.from({length:3}).map((_,i) => <SkeletonEarningsRow key={i}/>)}
-                    </div>
+                    !earningsLoaded ? (
+                      <div role="status" aria-label="Chargement du calendrier">
+                        {Array.from({length:3}).map((_,i) => <SkeletonEarningsRow key={i}/>)}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-6">
+                        <p className="text-[9px] text-[var(--fin-t3)] font-mono">Aucune donnée</p>
+                      </div>
+                    )
                   ) : col.data.map(e => (
                     <Link key={e.symbol} href={`/stock/${e.symbol}`}
                       className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--fin-border)] last:border-0 hover:bg-[var(--fin-hover)] transition-colors">

@@ -30,30 +30,40 @@ export const register = async (req: Request, res: Response) => {
   }
   const { email, password, name, orgName } = parsed.data
   const hashed = await bcrypt.hash(password, 10)
-  const slug = orgName.toLowerCase().replace(/\s+/g, '-')
+
+  // Slug unique : ajouter un suffixe aléatoire si collision
+  const baseSlug = orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+  const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`
 
   const trialEndsAt = new Date()
   trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DURATION_DAYS)
 
-  const org = await prisma.organization.create({
-    data: {
-      name: orgName,
-      slug,
-      trialEndsAt,
-      users: {
-        create: { email, password: hashed, name, role: 'OWNER' },
+  try {
+    const org = await prisma.organization.create({
+      data: {
+        name: orgName,
+        slug,
+        trialEndsAt,
+        users: {
+          create: { email, password: hashed, name, role: 'OWNER' },
+        },
       },
-    },
-    include: { users: true },
-  })
+      include: { users: true },
+    })
 
-  const user = org.users[0]
-  const accessToken = signAccess(user.id, org.id, user.role)
-  const refreshToken = signRefresh(user.id)
+    const user = org.users[0]
+    const accessToken = signAccess(user.id, org.id, user.role)
+    const refreshToken = signRefresh(user.id)
 
-  await prisma.user.update({ where: { id: user.id }, data: { refreshToken } })
+    await prisma.user.update({ where: { id: user.id }, data: { refreshToken } })
 
-  res.status(201).json({ accessToken, refreshToken, user: { id: user.id, email, name, role: user.role } })
+    res.status(201).json({ accessToken, refreshToken, user: { id: user.id, email, name, role: user.role } })
+  } catch (e: any) {
+    if (e?.code === 'P2002') {
+      return res.status(400).json({ message: 'Un compte existe déjà avec cet email.' })
+    }
+    throw e
+  }
 }
 
 export const login = async (req: Request, res: Response) => {

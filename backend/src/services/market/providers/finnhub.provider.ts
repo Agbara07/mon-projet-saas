@@ -1,9 +1,9 @@
 import { IMarketProvider, Quote, HistoricalPoint, StockProfile, NewsItem, EarningsEvent, SearchResult, TechnicalData } from '../types'
 
 const BASE = 'https://finnhub.io/api/v1'
-const KEY  = process.env.FINNHUB_API_KEY ?? ''
 
 async function fhFetch(path: string): Promise<any> {
+  const KEY = process.env.FINNHUB_API_KEY ?? ''
   if (!KEY) throw new Error('FINNHUB_API_KEY manquante')
   const r = await fetch(`${BASE}${path}&token=${KEY}`, {
     headers: { 'User-Agent': 'InvestSaaS/1.0' },
@@ -14,10 +14,11 @@ async function fhFetch(path: string): Promise<any> {
   return r.json()
 }
 
-const INDICES = ['^GSPC', '^IXIC', '^DJI', '^RUT', '^VIX']
+// ETF proxies — Finnhub free tier ne supporte pas les indices CFD (^GSPC, ^DJI, etc.)
+const INDICES = ['SPY', 'QQQ', 'DIA', 'IWM', '^VIX']
 const INDEX_NAMES: Record<string, string> = {
-  '^GSPC': 'S&P 500', '^IXIC': 'NASDAQ', '^DJI': 'Dow Jones',
-  '^RUT':  'Russell 2000', '^VIX': 'VIX',
+  'SPY': 'S&P 500', 'QQQ': 'NASDAQ', 'DIA': 'Dow Jones',
+  'IWM': 'Russell 2000', '^VIX': 'VIX',
 }
 
 export class FinnhubProvider implements IMarketProvider {
@@ -149,8 +150,10 @@ export class FinnhubProvider implements IMarketProvider {
 
   async getMarketOverview(): Promise<Quote[]> {
     const results = await Promise.allSettled(INDICES.map(s => this.getQuote(s)))
-    return results
+    const quotes = results
       .filter(r => r.status === 'fulfilled')
       .map(r => ({ ...(r as any).value, name: INDEX_NAMES[(r as any).value.symbol] ?? (r as any).value.symbol }))
+    if (quotes.length === 0) throw new Error('Finnhub overview: aucun résultat — fallback activé')
+    return quotes
   }
 }

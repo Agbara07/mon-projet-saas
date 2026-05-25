@@ -36,3 +36,14 @@ coverage/
 
 # ── Docker data ──────────────────────────────────────────────
 docker-data/
+
+# ── Claude Code (local uniquement) ───────────────────────────
+.claude/settings.local.json
+
+# ── Python cache ─────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+
+# ── Codegraph (base de données locale) ───────────────────────
+.codegraph/

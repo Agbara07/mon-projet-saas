@@ -10,6 +10,7 @@ import {
   TrendingUp, Globe, X, Clock, Zap, Crown, BarChart2,
 } from 'lucide-react'
 import type { CurrentUser } from '@/hooks/useCurrentUser'
+import { startProgress } from '@/components/ui/NavigationProgress'
 
 const NAV = [
   { href:'/dashboard', label:'Dashboard',  Icon:LayoutDashboard, key:'1', shortcut:'Ctrl+1' },
@@ -68,6 +69,8 @@ export default function Sidebar({ user, trialActive, trialDaysLeft, mobileOpen, 
       <Link
         key={href}
         href={href}
+        prefetch={true}
+        onClick={active ? undefined : startProgress}
         aria-current={active ? 'page' : undefined}
         title={shortcut ? `${label} — ${shortcut}` : label}
         className={cn(

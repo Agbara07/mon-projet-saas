@@ -142,6 +142,7 @@ Les providers spécialisés (Benzinga, TMX, ETF Global, BRVM, FMP) sont appelés
 | `/calendar` | Calendrier économique | ✅ |
 | `/macro` | Dashboard macro FRED | ✅ |
 | `/brvm` | Marché BRVM/UEMOA | ✅ |
+| `/euronext` | Marchés européens (CAC40, indices, forex, dirigeants) | ✅ |
 | `/billing` | Plans + Stripe | ✅ |
 | `/stock/[symbol]` | Terminal View action | ✅ |
 | `/settings` | Paramètres compte | ✅ |
@@ -235,6 +236,13 @@ GET    /api/market/:symbol/balance-sheets
 GET    /api/market/:symbol/cash-flows
 GET    /api/market/etf/:symbol/...        ← ETF Global
 GET    /api/market/brvm/...               ← BRVM UEMOA
+GET    /api/market/euronext               ← overview (palmarès+indices+forex+commodités)
+GET    /api/market/euronext/palmares      ← top5 gainers + top5 losers CAC40
+GET    /api/market/euronext/stocks        ← 38/40 cotations CAC40 en EUR
+GET    /api/market/euronext/indices       ← 7 indices européens (ETF proxies US)
+GET    /api/market/euronext/forex         ← 5 paires EUR/* (BCE via open.er-api.com)
+GET    /api/market/euronext/commodities   ← Or/Brent/Gaz/PDBC (ETF proxies US)
+GET    /api/market/:symbol/insider        ← transactions dirigeants FMP (JWT requis)
 
 GET/POST/DELETE /api/portfolios
 GET/POST/DELETE /api/watchlist
@@ -306,7 +314,49 @@ $env:CRON_SECRET = "BrvmCron2026InvestSaas"; npm run dev
 ```
 Sur Railway, les env vars sont injectées directement — aucun `.env` nécessaire.
 
-### 10. Backfill BRVM — SikaFinance URL correcte
+### 10. Euronext — sources de données et proxies
+
+**Stocks CAC40 (`.PA`)** : Finnhub free tier retourne `c:0` pour Euronext Paris (exchange non couvert). La cascade TwelveData → EODHD prend le relais après le fix market-router (voir point 11).
+
+**Indices européens** : pas d'API gratuite directe → ETF US-listés comme proxies :
+`EWQ` (CAC40), `EWG` (DAX), `EWU` (FTSE100), `FEZ` (EuroStoxx50), `EWN` (AEX), `EWI` (MIB), `EWP` (IBEX35)
+
+**Matières premières** : mêmes ETF proxies → `GLD` (Or), `BNO` (Brent), `UNG` (Gaz), `PDBC` (Matières 1ères)
+
+**Forex EUR/\*** : `open.er-api.com` (données BCE, 1500 req/mois, sans clé, sans blocage Railway).
+Frankfurter.app a des problèmes HTTPS redirect depuis Railway. Finnhub OANDA non couvert free tier.
+⚠️ La variation journalière (change/changePercent) est à 0 sur le free tier — amélioration future.
+
+**Insider transactions** : FMP `/stable/insider-trading?symbol=X&limit=N` — requiert JWT.
+
+### 11. Fix systémique market-router — getQuotes() cascade (commit `adbb105`)
+
+**Avant** : `withFallback()` s'arrêtait dès que Finnhub retournait `[]` (sans lever d'exception). TwelveData/EODHD ne prenaient jamais le relais pour les symboles `.PA`, `.DE`, `.SW`, etc.
+
+**Après** : `getQuotes()` itère maintenant **tous** les providers jusqu'à ce que chaque symbole soit résolu. Chaque symbol non résolu passe au provider suivant de la liste `quote`.
+
+Ce fix bénéficie au screener, aux pages stock et à toute utilisation de symboles européens — pas seulement à Euronext.
+
+### 12. Page /euronext — 404 sur Vercel (✅ résolu — 26/05/2026)
+
+**Cause racine :** le déploiement Vercel `nnat84g8g` avait échoué en 0ms (avant le build) — problème Vercel-side (quota/lock). Vercel avait rollback vers l'ancienne version sans euronext. Le code et le build local étaient corrects depuis le début.
+
+**Fix :** `vercel --prod` depuis `frontend/` — déploiement `dpl_8FLhAururSVMCQW8rjXUCoCqSS4n` (Ready, aliasé sur `mon-projet-saas-nine.vercel.app`).
+
+**Leçon :** si une page existe localement et build OK mais 404 sur Vercel → vérifier `vercel ls` et `vercel inspect` sur le déploiement Error avant de toucher au code.
+
+### 14. Onglet Dirigeants — insider trading FMP non disponible sur plan gratuit (stand-by)
+
+`FMP_API_KEY` configurée et fonctionnelle pour : profile, fundamentals, DCF, income/balance/cashflow.
+
+Mais `/stable/insider-trading` retourne HTTP 404 — endpoint supprimé du plan gratuit FMP (migration août 2025).
+`/api/v4/insider-trading` est legacy-only (abonnés avant août 2025 uniquement).
+
+**Comportement actuel :** l'onglet Dirigeants affiche "Données indisponibles — vérifiez le symbole ou la clé FMP" — cohérent, pas de crash.
+
+**À activer quand :** upgrade plan FMP payant → l'endpoint `/stable/insider-trading` sera débloqué, aucune modification de code nécessaire.
+
+### 13. Backfill BRVM — SikaFinance URL correcte
 URL historique : `/marches/historiques/{SYM}.{cc}` (pluriel, symbole majuscule, suffixe pays).
 L'ancienne URL `/marches/historique/{sym}` retourne 404. Ne pas revenir en arrière.
 Suffixes pays : `ci` Côte d'Ivoire, `sn` Sénégal, `bf` Burkina, `bj` Bénin, `tg` Togo, `ml` Mali, `ne` Niger, `gw` Guinée-Bissau.
@@ -426,12 +476,98 @@ Clés API hardcodées, credentials exposés, logs de données sensibles, injecti
 
 ## Prochaines tâches prioritaires
 
-1. **Configurer les clés API** manquantes dans Railway (voir tableau providers dans CLAUDE.md) — 10 clés vides
-2. **Backfill Railway** — déclencher `POST /api/market/brvm/backfill` sur Railway pour seeder la BDD de prod (même données que local)
-3. **Tests backend** — coverage sur controllers + services market
-4. **Notifications email** — alertes par email (SendGrid ou Resend)
-5. **Export portfolio** — CSV/PDF des holdings et P&L
+1. **Clés API en stand-by** (services payants, à configurer à l'achat) : `MARKETDATA_API_KEY`, `IEX_CLOUD_API_KEY`, `TMX_API_KEY`, `ETF_GLOBAL_API_KEY`
+2. **Onglet Dirigeants** — stand-by (voir point 14 des pièges connus)
+3. **Stripe** — remplacer les placeholders Railway (`sk_test_placeholder`, `whsec_placeholder`) par les vraies clés Stripe
+4. ✅ **Backfill Railway** — exécuté le 26/05/2026 — 29 symboles, 1 855 rows (voir Session 9)
+5. **Tests backend** — coverage sur controllers + services market
+6. **Notifications email** — alertes par email (SendGrid ou Resend)
+7. **Export portfolio** — CSV/PDF des holdings et P&L
 
 ---
 
-*Dernière mise à jour : 25/05/2026 (session 5 — responsive mobile toutes pages)*
+---
+
+## Session 6 — 26/05/2026 — Feature Euronext
+
+### Fichiers créés
+- `backend/src/services/market/providers/euronext.provider.ts` — provider CAC40/indices/forex/commodités
+- `backend/src/controllers/euronext.controller.ts` — handlers overview/palmarès/stocks/indices/forex/commodities/insider
+- `frontend/src/app/(dashboard)/euronext/page.tsx` — page 5 onglets (Palmarès, Actions CAC40, Indices, Devises & Matières, Dirigeants)
+- `frontend/src/app/(dashboard)/euronext/loading.tsx` — skeleton loading
+- `frontend/src/app/(dashboard)/euronext/error.tsx` — error boundary avec retry
+
+### Fichiers modifiés
+- `backend/src/services/market/types.ts` — interface `InsiderTransaction` ajoutée
+- `backend/src/services/market/providers/fmp.provider.ts` — `getInsiderTransactions()` ajouté
+- `backend/src/services/market/market-router.ts` — **fix systémique** `getQuotes()` cascade (voir point 11)
+- `backend/src/routes/market.routes.ts` — 6 routes `/euronext/*` publiques + `/:symbol/insider` (JWT)
+- `frontend/src/components/layout/Sidebar.tsx` — entrée Euronext + icône `Euro` lucide-react
+- `frontend/src/lib/api.ts` — TTL cache euronext (30s overview, 60s stocks, 120s autres)
+
+### Commits
+- `23195a3` — feat(euronext): backend marchés européens style ABCBourse
+- `38f4e49` — feat(euronext): page /euronext avec 5 onglets
+- `adbb105` — fix(market-router): cascade getQuotes() à travers tous les providers
+
+### Backend testé ✅ (Railway)
+Toutes les routes retournent des données réelles :
+- Palmarès : Safran +5.79%, Hermès +2.83%, Schneider +3.07%
+- Forex : EUR/USD=1.164, EUR/GBP=0.862, EUR/CHF=0.911
+
+### Frontend ✅ — déployé sur Vercel (26/05/2026)
+`https://mon-projet-saas-nine.vercel.app/euronext` opérationnel — déploiement `dpl_8FLhAururSVMCQW8rjXUCoCqSS4n`.
+
+---
+
+---
+
+## Session 7 — 26/05/2026 — Clés API Railway + fix FRONTEND_URL
+
+### Actions
+- `FMP_API_KEY=zFnzyRPgrmHm4p3GRywmTyCB35NQY6XV` — ajoutée Railway + `.env` local
+- `FRONTEND_URL` corrigé : `ton-app.vercel.app` → `mon-projet-saas-nine.vercel.app`
+- 4 clés payantes en stand-by : `MARKETDATA_API_KEY`, `IEX_CLOUD_API_KEY`, `TMX_API_KEY`, `ETF_GLOBAL_API_KEY`
+- Stripe toujours en placeholder — à remplacer à l'activation
+
+### État Railway après session
+Toutes les clés gratuites disponibles sont configurées. Fondamentaux/DCF/Dirigeants opérationnels en prod.
+
+---
+
+---
+
+## Session 8 — 26/05/2026 — Test onglet Dirigeants + diagnostic FMP
+
+### Résultat du test
+- FMP API key valide ✅ — profile, fundamentals, DCF opérationnels en prod
+- Insider trading ❌ — `/stable/insider-trading` retourne 404 (endpoint retiré plan gratuit FMP août 2025)
+- Onglet Dirigeants mis en stand-by — affiche message d'erreur propre, pas de crash
+- Aucune modification de code requise pour activer quand plan FMP upgradé
+
+---
+
+---
+
+---
+
+## Session 9 — 26/05/2026 — Backfill BRVM Railway
+
+### Action
+- `POST /api/market/brvm/backfill` déclenché manuellement sur Railway (header `x-cron-secret`)
+
+### Résultat
+| Métrique | Valeur |
+|----------|--------|
+| Statut | ✅ `success: true` |
+| Source | SikaFinance (source 1) |
+| Symboles couverts | 29 / 29 |
+| Rows insérées/mises à jour | **1 855** |
+| Durée | 21s |
+| Fallback bulletins BRVM | non nécessaire (0 symbole restant) |
+
+SikaFinance a couvert les 29 symboles en un seul passage. La table `BRVMPriceHistory` en prod est maintenant seedée avec ~90 jours d'historique.
+
+---
+
+*Dernière mise à jour : 26/05/2026 (session 9 — backfill BRVM Railway)*

@@ -480,7 +480,7 @@ Clés API hardcodées, credentials exposés, logs de données sensibles, injecti
 2. **Onglet Dirigeants** — stand-by (voir point 14 des pièges connus)
 3. **Stripe** — remplacer les placeholders Railway (`sk_test_placeholder`, `whsec_placeholder`) par les vraies clés Stripe
 4. ✅ **Backfill Railway** — exécuté le 26/05/2026 — 29 symboles, 1 855 rows (voir Session 9)
-5. **Tests backend** — coverage sur controllers + services market
+5. ✅ **Tests backend** — 140 tests, coverage 65.14% (commit `ec0a0f1` — voir Session 10)
 6. **Notifications email** — alertes par email (SendGrid ou Resend)
 7. **Export portfolio** — CSV/PDF des holdings et P&L
 
@@ -570,4 +570,41 @@ SikaFinance a couvert les 29 symboles en un seul passage. La table `BRVMPriceHis
 
 ---
 
-*Dernière mise à jour : 26/05/2026 (session 9 — backfill BRVM Railway)*
+---
+
+---
+
+## Session 10 — 26/05/2026 — Tests backend + coverage
+
+### Fichiers créés
+- `backend/src/services/market/cache.test.ts` — 14 tests (TTL, expiry, purge)
+- `backend/src/services/market/circuit-breaker.test.ts` — 11 tests (state machine, rate-limit 429, recovery 2min)
+- `backend/src/services/market/providers/brvm-transaction-cost.test.ts` — 10 tests (barème CREPMF 2024, retenue CI/SN/BF)
+- `backend/src/services/market/market-router.test.ts` — 14 tests (cache hit/miss, fallback, getQuotes cascade, screenStocks)
+- `backend/src/controllers/market.controller.test.ts` — 18 tests (GET/POST routes JWT + CRON_SECRET)
+- `backend/src/controllers/euronext.controller.test.ts` — 14 tests (5 endpoints + Promise.allSettled overview)
+
+### Fichiers modifiés
+- `backend/jest.config.js` — `collectCoverageFrom` ciblé sur router/cache/circuit-breaker/controllers, seuil 60%
+
+### Résultats
+| Métrique | Valeur |
+|----------|--------|
+| Tests | **140 / 140 ✅** |
+| Suites | 11 |
+| Coverage lignes | **65.14%** (seuil ≥60%) |
+| `circuit-breaker.ts` | 100% |
+| `cache.ts` | 100% |
+| `brvm-transaction-cost.provider.ts` | 100% |
+| `euronext.controller.ts` | 84.2% |
+| `market-router.ts` | 66.9% |
+
+### Fix clé — TDZ dans jest.mock()
+`jest.mock()` factories sont hoistées avant toutes les déclarations du fichier. Un `const mkProvider = () => ...` est donc en TDZ au moment où la factory s'exécute. **Solution :** `function mkProvider()` (déclaration hoistée avec son corps).
+
+### Commit
+- `ec0a0f1` — test(backend): 140 tests, coverage 65% — controllers + services market
+
+---
+
+*Dernière mise à jour : 26/05/2026 (session 10 — tests backend)*

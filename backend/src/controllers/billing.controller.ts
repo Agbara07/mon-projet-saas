@@ -115,31 +115,35 @@ export const handleWebhook = async (req: Request, res: Response) => {
       }
       if (!orgId) return res.status(400).json({ message: 'orgId introuvable' })
 
-      // Upsert sur organizationId (unique) — évite la violation de contrainte si une
-      // subscription existe déjà pour cette org (ex: checkout multiple ou retry)
-      const record = await prisma.subscription.upsert({
-        where:  { organizationId: orgId },
-        create: {
-          stripeCustomerId:     sub.customer as string,
-          stripeSubscriptionId: sub.id,
-          stripePriceId:        priceId,
-          status:               sub.status.toUpperCase() as any,
-          currentPeriodEnd:     new Date(sub.current_period_end * 1000),
-          organization:         { connect: { id: orgId } },
-        },
-        update: {
-          stripeCustomerId:     sub.customer as string,
-          stripeSubscriptionId: sub.id,
-          stripePriceId:        priceId,
-          status:               sub.status.toUpperCase() as any,
-          currentPeriodEnd:     new Date(sub.current_period_end * 1000),
-          canceledAt:           null,
-        },
-        select: { organizationId: true },
+      // Lookup par stripeSubscriptionId ou organizationId pour être idempotent
+      // (created + updated arrivent simultanément — évite la race condition sur @unique)
+      const existing = await prisma.subscription.findFirst({
+        where: { OR: [{ stripeSubscriptionId: sub.id }, { organizationId: orgId }] },
+        select: { id: true, organizationId: true },
       })
 
+      const subData = {
+        stripeCustomerId:     sub.customer as string,
+        stripeSubscriptionId: sub.id,
+        stripePriceId:        priceId,
+        status:               sub.status.toUpperCase() as any,
+        currentPeriodEnd:     new Date(sub.current_period_end * 1000),
+        canceledAt:           null as Date | null,
+      }
+
+      let resolvedOrgId: string
+      if (existing) {
+        await prisma.subscription.update({ where: { id: existing.id }, data: subData })
+        resolvedOrgId = existing.organizationId
+      } else {
+        await prisma.subscription.create({
+          data: { ...subData, organization: { connect: { id: orgId } } },
+        })
+        resolvedOrgId = orgId
+      }
+
       await prisma.organization.update({
-        where: { id: record.organizationId },
+        where: { id: resolvedOrgId },
         data:  { plan: isActive ? newPlan : 'FREE' },
       })
     }

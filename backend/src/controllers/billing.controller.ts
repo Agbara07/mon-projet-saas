@@ -113,27 +113,22 @@ export const handleWebhook = async (req: Request, res: Response) => {
         const customer = await stripe.customers.retrieve(sub.customer as string)
         if (!customer.deleted) orgId = (customer as Stripe.Customer).metadata?.orgId
       }
+      if (!orgId) return res.status(400).json({ message: 'orgId introuvable' })
 
-      const existingSub = await prisma.subscription.findUnique({
-        where:  { stripeCustomerId: sub.customer as string },
-        select: { organizationId: true },
-      })
-
-      if (!existingSub && !orgId) {
-        return res.status(400).json({ message: 'orgId introuvable' })
-      }
-
+      // Upsert sur organizationId (unique) — évite la violation de contrainte si une
+      // subscription existe déjà pour cette org (ex: checkout multiple ou retry)
       const record = await prisma.subscription.upsert({
-        where:  { stripeCustomerId: sub.customer as string },
+        where:  { organizationId: orgId },
         create: {
           stripeCustomerId:     sub.customer as string,
           stripeSubscriptionId: sub.id,
           stripePriceId:        priceId,
           status:               sub.status.toUpperCase() as any,
           currentPeriodEnd:     new Date(sub.current_period_end * 1000),
-          organization:         { connect: { id: orgId! } },
+          organization:         { connect: { id: orgId } },
         },
         update: {
+          stripeCustomerId:     sub.customer as string,
           stripeSubscriptionId: sub.id,
           stripePriceId:        priceId,
           status:               sub.status.toUpperCase() as any,

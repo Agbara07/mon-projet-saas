@@ -67,6 +67,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response) => 
     customer: customerId,
     mode: 'subscription',
     line_items: [{ price: priceId, quantity: 1 }],
+    subscription_data: { metadata: { orgId } },
     success_url: `${process.env.FRONTEND_URL}/dashboard?success=true`,
     cancel_url: `${process.env.FRONTEND_URL}/billing`,
   })
@@ -96,58 +97,78 @@ export const handleWebhook = async (req: Request, res: Response) => {
     return res.status(400).send('Webhook Error')
   }
 
-  if (
-    event.type === 'customer.subscription.created' ||
-    event.type === 'customer.subscription.updated'
-  ) {
-    const sub    = event.data.object as Stripe.Subscription
-    const priceId = sub.items.data[0].price.id
-    const newPlan = PRICE_TO_PLAN[priceId] ?? 'FREE'
-    const isActive = sub.status === 'active' || sub.status === 'trialing'
+  try {
+    if (
+      event.type === 'customer.subscription.created' ||
+      event.type === 'customer.subscription.updated'
+    ) {
+      const sub     = event.data.object as Stripe.Subscription
+      const priceId = sub.items.data[0].price.id
+      const newPlan = PRICE_TO_PLAN[priceId] ?? 'FREE'
+      const isActive = sub.status === 'active' || sub.status === 'trialing'
 
-    const record = await prisma.subscription.upsert({
-      where:  { stripeCustomerId: sub.customer as string },
-      create: {
-        stripeCustomerId:     sub.customer as string,
-        stripeSubscriptionId: sub.id,
-        stripePriceId:        priceId,
-        status:               sub.status.toUpperCase() as any,
-        currentPeriodEnd:     new Date(sub.current_period_end * 1000),
-        organization:         { connect: { id: sub.metadata.orgId } },
-      },
-      update: {
-        stripeSubscriptionId: sub.id,
-        stripePriceId:        priceId,
-        status:               sub.status.toUpperCase() as any,
-        currentPeriodEnd:     new Date(sub.current_period_end * 1000),
-        canceledAt:           null,
-      },
-      select: { organizationId: true },
-    })
+      // orgId dans les métadonnées de la subscription (nouvelles) ou du customer (legacy)
+      let orgId: string | undefined = sub.metadata?.orgId
+      if (!orgId) {
+        const customer = await stripe.customers.retrieve(sub.customer as string)
+        if (!customer.deleted) orgId = (customer as Stripe.Customer).metadata?.orgId
+      }
 
-    // Synchronise le plan sur l'organisation
-    await prisma.organization.update({
-      where: { id: record.organizationId },
-      data:  { plan: isActive ? newPlan : 'FREE' },
-    })
-  }
+      const existingSub = await prisma.subscription.findUnique({
+        where:  { stripeCustomerId: sub.customer as string },
+        select: { organizationId: true },
+      })
 
-  if (event.type === 'customer.subscription.deleted') {
-    const sub = event.data.object as Stripe.Subscription
-    await prisma.subscription.updateMany({
-      where: { stripeSubscriptionId: sub.id },
-      data:  { status: 'CANCELED', canceledAt: new Date() },
-    })
-    const record = await prisma.subscription.findFirst({
-      where:  { stripeSubscriptionId: sub.id },
-      select: { organizationId: true },
-    })
-    if (record) {
+      if (!existingSub && !orgId) {
+        return res.status(400).json({ message: 'orgId introuvable' })
+      }
+
+      const record = await prisma.subscription.upsert({
+        where:  { stripeCustomerId: sub.customer as string },
+        create: {
+          stripeCustomerId:     sub.customer as string,
+          stripeSubscriptionId: sub.id,
+          stripePriceId:        priceId,
+          status:               sub.status.toUpperCase() as any,
+          currentPeriodEnd:     new Date(sub.current_period_end * 1000),
+          organization:         { connect: { id: orgId! } },
+        },
+        update: {
+          stripeSubscriptionId: sub.id,
+          stripePriceId:        priceId,
+          status:               sub.status.toUpperCase() as any,
+          currentPeriodEnd:     new Date(sub.current_period_end * 1000),
+          canceledAt:           null,
+        },
+        select: { organizationId: true },
+      })
+
       await prisma.organization.update({
         where: { id: record.organizationId },
-        data:  { plan: 'FREE' },
+        data:  { plan: isActive ? newPlan : 'FREE' },
       })
     }
+
+    if (event.type === 'customer.subscription.deleted') {
+      const sub = event.data.object as Stripe.Subscription
+      await prisma.subscription.updateMany({
+        where: { stripeSubscriptionId: sub.id },
+        data:  { status: 'CANCELED', canceledAt: new Date() },
+      })
+      const record = await prisma.subscription.findFirst({
+        where:  { stripeSubscriptionId: sub.id },
+        select: { organizationId: true },
+      })
+      if (record) {
+        await prisma.organization.update({
+          where: { id: record.organizationId },
+          data:  { plan: 'FREE' },
+        })
+      }
+    }
+  } catch (err: any) {
+    console.error('[webhook] erreur handler:', err?.message ?? err)
+    return res.status(500).json({ message: 'Erreur webhook interne' })
   }
 
   res.json({ received: true })

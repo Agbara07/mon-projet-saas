@@ -44,7 +44,7 @@ export const CAC40_COMPONENTS: { symbol: string; name: string; sector: string }[
   { symbol: 'ENGI.PA', name: 'Engie',                   sector: 'Énergie' },
 ]
 
-/* ── ETF proxies pour indices européens (Finnhub free tier OK) ── */
+/* ── ETF proxies pour indices européens (providers US free tier OK) ── */
 const INDEX_PROXIES = [
   { symbol: 'EWQ', name: 'CAC 40',        country: 'France',      flag: '🇫🇷' },
   { symbol: 'EWG', name: 'DAX',           country: 'Allemagne',   flag: '🇩🇪' },
@@ -55,49 +55,107 @@ const INDEX_PROXIES = [
   { symbol: 'EWP', name: 'IBEX 35',       country: 'Espagne',     flag: '🇪🇸' },
 ]
 
-/* ── Paires forex via Finnhub ────────────────────────────────── */
+/* ── Paires forex (code interne → noms affichage) ────────────── */
 const FOREX_PAIRS = [
-  { symbol: 'OANDA:EUR_USD', name: 'EUR/USD', base: 'EUR', quote: 'USD' },
-  { symbol: 'OANDA:EUR_GBP', name: 'EUR/GBP', base: 'EUR', quote: 'GBP' },
-  { symbol: 'OANDA:EUR_CHF', name: 'EUR/CHF', base: 'EUR', quote: 'CHF' },
-  { symbol: 'OANDA:EUR_JPY', name: 'EUR/JPY', base: 'EUR', quote: 'JPY' },
-  { symbol: 'OANDA:EUR_CAD', name: 'EUR/CAD', base: 'EUR', quote: 'CAD' },
+  { code: 'USD', name: 'EUR/USD', base: 'EUR', quote: 'USD' },
+  { code: 'GBP', name: 'EUR/GBP', base: 'EUR', quote: 'GBP' },
+  { code: 'CHF', name: 'EUR/CHF', base: 'EUR', quote: 'CHF' },
+  { code: 'JPY', name: 'EUR/JPY', base: 'EUR', quote: 'JPY' },
+  { code: 'CAD', name: 'EUR/CAD', base: 'EUR', quote: 'CAD' },
 ]
 
 /* ── ETF proxies matières premières ─────────────────────────── */
 const COMMODITY_PROXIES = [
-  { symbol: 'GLD', name: 'Or',            unit: 'USD/oz' },
-  { symbol: 'BNO', name: 'Brent',         unit: 'USD/b'  },
-  { symbol: 'UNG', name: 'Gaz naturel',   unit: 'USD/MMBtu' },
-  { symbol: 'PDBC', name: 'Matières 1ères', unit: 'USD' },
+  { symbol: 'GLD',  name: 'Or',              unit: 'USD/oz'    },
+  { symbol: 'BNO',  name: 'Brent',           unit: 'USD/b'     },
+  { symbol: 'UNG',  name: 'Gaz naturel',     unit: 'USD/MMBtu' },
+  { symbol: 'PDBC', name: 'Matières 1ères',  unit: 'USD'       },
 ]
 
-/* ── Fetch Finnhub direct (forex — hors IMarketProvider) ────── */
-async function fhQuote(symbol: string): Promise<any> {
-  const KEY = process.env.FINNHUB_API_KEY ?? ''
-  if (!KEY) throw new Error('FINNHUB_API_KEY manquante')
-  const r = await fetch(
-    `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${KEY}`,
-    { headers: { 'User-Agent': 'InvestSaaS/1.0' }, signal: AbortSignal.timeout(8_000) }
-  )
-  if (!r.ok) throw new Error(`Finnhub HTTP ${r.status} pour ${symbol}`)
-  return r.json()
+/* ── Yahoo Finance v8 — fetch direct pour actions .PA ────────── */
+// Utilise l'API chart v8 (pas le package yahoo-finance2 — celui-ci a été
+// désinstallé car son redirect handling était cassé sur Railway).
+// fetch() natif gère les redirects correctement via redirect:'follow'.
+async function yfQuote(symbol: string): Promise<{
+  price: number; prevClose: number; volume: number; currency: string
+}> {
+  const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=2d`
+  const r = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Accept': 'application/json',
+    },
+    redirect: 'follow',
+    signal: AbortSignal.timeout(10_000),
+  })
+  if (!r.ok) throw new Error(`Yahoo Finance HTTP ${r.status} pour ${symbol}`)
+  const json: any = await r.json()
+  const meta = json?.chart?.result?.[0]?.meta
+  if (!meta?.regularMarketPrice) throw new Error(`Pas de données Yahoo pour ${symbol}`)
+  return {
+    price:     meta.regularMarketPrice,
+    prevClose: meta.chartPreviousClose ?? meta.previousClose ?? meta.regularMarketPrice,
+    volume:    meta.regularMarketVolume ?? 0,
+    currency:  meta.currency ?? 'EUR',
+  }
+}
+
+/* ── Frankfurter.app (BCE) — forex EUR/* sans clé API ────────── */
+// Données officielles de la Banque Centrale Européenne, gratuites, sans clé.
+async function ecbForexRates(): Promise<{
+  today: Record<string, number>; yesterday: Record<string, number>
+}> {
+  const codes = FOREX_PAIRS.map(p => p.code).join(',')
+
+  // Jour ouvré précédent pour le calcul de variation
+  const prevDate = new Date()
+  prevDate.setDate(prevDate.getDate() - 1)
+  if (prevDate.getDay() === 0) prevDate.setDate(prevDate.getDate() - 2) // dimanche → vendredi
+  if (prevDate.getDay() === 6) prevDate.setDate(prevDate.getDate() - 1) // samedi → vendredi
+  const prev = prevDate.toISOString().split('T')[0]
+
+  const [todayRes, prevRes] = await Promise.allSettled([
+    fetch(`https://api.frankfurter.app/latest?from=EUR&to=${codes}`, {
+      headers: { 'User-Agent': 'InvestSaaS/1.0' },
+      signal: AbortSignal.timeout(8_000),
+    }).then(r => r.ok ? (r.json() as Promise<any>) : Promise.reject(`HTTP ${r.status}`)),
+    fetch(`https://api.frankfurter.app/${prev}?from=EUR&to=${codes}`, {
+      headers: { 'User-Agent': 'InvestSaaS/1.0' },
+      signal: AbortSignal.timeout(8_000),
+    }).then(r => r.ok ? (r.json() as Promise<any>) : Promise.reject(`HTTP ${r.status}`)),
+  ])
+
+  const today     = todayRes.status === 'fulfilled' ? (todayRes.value as any)?.rates ?? {} : {}
+  const yesterday = prevRes.status  === 'fulfilled' ? (prevRes.value  as any)?.rates ?? today : today
+
+  return { today, yesterday }
 }
 
 /* ── API publique ────────────────────────────────────────────── */
 
 export async function getCAC40Quotes() {
-  const symbols = CAC40_COMPONENTS.map(c => c.symbol)
-  const quotes  = await marketRouter.getQuotes(symbols)
-  return quotes.map(q => {
-    const meta = CAC40_COMPONENTS.find(c => c.symbol === q.symbol)
-    return {
-      ...q,
-      name:     meta?.name   ?? q.name,
-      sector:   meta?.sector ?? '',
-      currency: 'EUR',
-    }
-  }).filter(q => q.price > 0)
+  const results = await Promise.allSettled(
+    CAC40_COMPONENTS.map(async meta => {
+      const q = await yfQuote(meta.symbol)
+      const change        = q.price - q.prevClose
+      const changePercent = q.prevClose > 0 ? (change / q.prevClose) * 100 : 0
+      return {
+        symbol:        meta.symbol,
+        name:          meta.name,
+        sector:        meta.sector,
+        price:         q.price,
+        change:        Math.round(change * 100) / 100,
+        changePercent: Math.round(changePercent * 100) / 100,
+        volume:        q.volume,
+        currency:      'EUR',
+        provider:      'yahoo-v8',
+      }
+    })
+  )
+  return results
+    .filter(r => r.status === 'fulfilled')
+    .map(r => (r as any).value)
+    .filter((q: any) => q.price > 0)
 }
 
 export async function getEuropeanIndices() {
@@ -112,22 +170,28 @@ export async function getEuropeanIndices() {
 }
 
 export async function getEuropeanForex() {
-  const results = await Promise.allSettled(
-    FOREX_PAIRS.map(async pair => {
-      const data = await fhQuote(pair.symbol)
-      if (!data?.c) throw new Error(`Pas de données forex pour ${pair.symbol}`)
-      return {
-        symbol:        pair.symbol,
-        name:          pair.name,
-        base:          pair.base,
-        quote:         pair.quote,
-        price:         data.c,
-        change:        data.d  ?? 0,
-        changePercent: data.dp ?? 0,
-      }
-    })
-  )
-  return results.filter(r => r.status === 'fulfilled').map(r => (r as any).value)
+  try {
+    const { today, yesterday } = await ecbForexRates()
+    return FOREX_PAIRS
+      .filter(p => today[p.code] != null)
+      .map(p => {
+        const price   = today[p.code]
+        const prev    = yesterday[p.code] ?? price
+        const change        = Math.round((price - prev) * 10000) / 10000
+        const changePercent = prev > 0 ? Math.round(((price - prev) / prev) * 10000) / 100 : 0
+        return {
+          symbol:        `OANDA:EUR_${p.code}`,
+          name:          p.name,
+          base:          p.base,
+          quote:         p.quote,
+          price,
+          change,
+          changePercent,
+        }
+      })
+  } catch {
+    return []
+  }
 }
 
 export async function getEuropeanCommodities() {

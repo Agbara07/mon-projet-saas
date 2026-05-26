@@ -118,9 +118,31 @@ export class MarketRouter {
 
     if (missing.length === 0) return cached
 
-    const fetched = await withFallback('quote', `quotes(${missing.join(',')})`, p => p.getQuotes(missing))
-      .catch(() => missing.map(FALLBACK_QUOTE))
+    // Cascade across providers until all symbols are resolved.
+    // withFallback stops at the first provider that doesn't throw — even if it
+    // returns [] — so Finnhub's empty result for .PA symbols would silently
+    // block TwelveData/EODHD from running. This loop fixes that.
+    const resolved = new Map<string, Quote>()
+    for (const provider of getProvidersByType('quote')) {
+      const unresolved = missing.filter(s => !resolved.has(s))
+      if (unresolved.length === 0) break
+      try {
+        const results = await provider.getQuotes(unresolved)
+        circuitBreaker.onSuccess(provider.name)
+        for (const q of results) {
+          if (q.price > 0 && !resolved.has(q.symbol)) resolved.set(q.symbol, q)
+        }
+      } catch (err: any) {
+        circuitBreaker.onError(provider.name, err)
+      }
+    }
 
+    // Symbols still unresolved → placeholder (filtered downstream by price > 0)
+    for (const sym of missing) {
+      if (!resolved.has(sym)) resolved.set(sym, FALLBACK_QUOTE(sym))
+    }
+
+    const fetched = Array.from(resolved.values())
     fetched.forEach(q => { if (q.price > 0) cache.set(`quote:${q.symbol}`, q, TTL.QUOTE) })
     return [...cached, ...fetched]
   }

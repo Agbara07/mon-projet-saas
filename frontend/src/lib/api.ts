@@ -12,6 +12,9 @@ const TTL: [RegExp, number][] = [
   [/\/historical/,          60_000],  // historical — 1 min
   [/\/brvm\/tools\//,      300_000],  // BRVM tools — 5 min
   [/\/macro\//,            300_000],  // macro — 5 min
+  [/\/euronext$/,           30_000],  // euronext overview — 30 s
+  [/\/euronext\/stocks/,    60_000],  // CAC40 stocks — 1 min
+  [/\/euronext\//,         120_000],  // indices/forex/commodities — 2 min
 ]
 
 function ttlFor(url: string): number {

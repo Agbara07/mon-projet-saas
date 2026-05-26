@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, BarChart3, Eye, Search,
   CalendarDays, Bell, CreditCard, Settings, Shield,
-  TrendingUp, Globe, X, Clock, Zap, Crown, BarChart2,
+  TrendingUp, Globe, X, Clock, Zap, Crown, BarChart2, Euro,
 } from 'lucide-react'
 import type { CurrentUser } from '@/hooks/useCurrentUser'
 import { startProgress } from '@/components/ui/NavigationProgress'
@@ -21,6 +21,7 @@ const NAV = [
   { href:'/alerts',    label:'Alertes',    Icon:Bell,             key:'6', shortcut:'Ctrl+6' },
   { href:'/brvm',      label:'BRVM',       Icon:Globe,            key:'7', shortcut:'Ctrl+7' },
   { href:'/macro',     label:'Macro',      Icon:BarChart2,        key:'8', shortcut:'Ctrl+8' },
+  { href:'/euronext',  label:'Euronext',   Icon:Euro,             key:'9', shortcut:'Ctrl+9' },
 ]
 
 const NAV_BOTTOM = [
@@ -119,7 +120,7 @@ export default function Sidebar({ user, trialActive, trialDaysLeft, mobileOpen, 
           <span className="font-semibold flex-1">Passer à Pro</span>
         </Link>
       )}
-      <p className="text-[9px] text-[var(--fin-t3)] font-mono text-center leading-relaxed">⌘K Palette · ⌘1–7 Nav</p>
+      <p className="text-[9px] text-[var(--fin-t3)] font-mono text-center leading-relaxed">⌘K Palette · ⌘1–9 Nav</p>
     </div>
   )
 

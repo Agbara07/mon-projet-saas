@@ -3,6 +3,7 @@ import {
   NewsItem, EarningsEvent, SearchResult,
   IncomeStatement, BalanceSheet, CashFlowStatement,
   AnalystEstimate, DCFValuation, Fundamentals,
+  InsiderTransaction,
 } from '../types'
 
 // FMP migré vers /stable/ en août 2025 — /api/v3/ et /api/v4/ = Legacy
@@ -183,6 +184,28 @@ export class FMPProvider implements IMarketProvider {
       stockPrice: price,
       upside:     Math.round(upside * 100) / 100,
     }
+  }
+
+  async getInsiderTransactions(symbol: string, limit = 20): Promise<InsiderTransaction[]> {
+    const data = await fmpFetch(`/insider-trading?symbol=${encodeURIComponent(symbol)}&limit=${limit}`)
+    if (!Array.isArray(data)) return []
+    return data.map((t: any) => {
+      const qty   = Math.abs(t.securitiesTransacted ?? 0)
+      const price = t.price ?? 0
+      return {
+        symbol:               t.symbol ?? symbol,
+        filingDate:           t.filingDate ?? '',
+        transactionDate:      t.transactionDate ?? t.filingDate ?? '',
+        reportingName:        t.reportingName ?? '',
+        transactionType:      t.transactionType ?? '',
+        securitiesOwned:      t.securitiesOwned ?? 0,
+        securitiesTransacted: qty,
+        price:                price || undefined,
+        totalValue:           price > 0 ? Math.round(qty * price) : undefined,
+        securityName:         t.securityName ?? symbol,
+        link:                 t.link ?? undefined,
+      }
+    })
   }
 
   async getFundamentals(symbol: string, limit = 10): Promise<Fundamentals> {

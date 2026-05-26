@@ -17,6 +17,11 @@ import {
   macroUS, macroUEMOA,
   publicTicker,
 } from '../controllers/market.controller'
+import {
+  euronextOverview, euronextPalmares, euronextStocks,
+  euronextIndices, euronextForex, euronextCommodities,
+  insiderTransactions,
+} from '../controllers/euronext.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import rateLimit from 'express-rate-limit'
 
@@ -32,6 +37,16 @@ router.get('/macro/us',       publicLimiter, macroUS)
 router.get('/macro/uemoa',    publicLimiter, macroUEMOA)
 router.post('/brvm/refresh',  brvmRefresh)
 router.post('/brvm/backfill', brvmBackfill)
+
+// ── Euronext — données publiques ──────────────────────────
+// IMPORTANT : déclarer /euronext/* avant router.use(authenticate)
+// pour que la page /euronext soit accessible sans JWT
+router.get('/euronext',                  publicLimiter, euronextOverview)
+router.get('/euronext/palmares',         publicLimiter, euronextPalmares)
+router.get('/euronext/stocks',           publicLimiter, euronextStocks)
+router.get('/euronext/indices',          publicLimiter, euronextIndices)
+router.get('/euronext/forex',            publicLimiter, euronextForex)
+router.get('/euronext/commodities',      publicLimiter, euronextCommodities)
 
 // ── Toutes les autres routes requièrent un JWT ─────────────
 router.use(authenticate)
@@ -96,5 +111,6 @@ router.get('/:symbol/dcf',               dcfValuation)       // fair value DCF +
 router.get('/:symbol/income-statements', incomeStatements)   // compte de résultats seul
 router.get('/:symbol/balance-sheets',    balanceSheets)      // bilans seuls
 router.get('/:symbol/cash-flows',        cashFlows)          // cash flows seuls
+router.get('/:symbol/insider',           insiderTransactions) // transactions dirigeants (FMP)
 
 export default router

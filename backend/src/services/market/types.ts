@@ -192,6 +192,21 @@ export interface Fundamentals {
   provider:          string
 }
 
+/* ── Transactions dirigeants (FMP) ─────────────────────────── */
+export interface InsiderTransaction {
+  symbol:            string
+  filingDate:        string
+  transactionDate:   string
+  reportingName:     string
+  transactionType:   string   // 'P-Purchase' | 'S-Sale' | etc.
+  securitiesOwned:   number
+  securitiesTransacted: number
+  price?:            number
+  totalValue?:       number   // price × securitiesTransacted
+  securityName:      string
+  link?:             string
+}
+
 /* ── Statut d'un provider ───────────────────────────────────── */
 export interface ProviderStatus {
   name:        string

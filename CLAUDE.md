@@ -2,6 +2,41 @@
 
 ---
 
+## Protocole Anti-Hallucination (PRIORITÉ ABSOLUE)
+
+Ces règles s'appliquent AVANT l'Engineering OS. Elles existent pour éviter les boucles d'erreurs et la dégradation du contexte.
+
+### Règles de session
+
+- **1 session = 1 tâche.** Finir ou abandonner explicitement avant de passer à autre chose.
+- **`/clear` entre chaque tâche distincte.** Ne jamais enchaîner feature + bug + refacto dans la même session.
+- **Lire avant d'écrire.** Toujours lire les fichiers concernés avant tout edit — même si je "pense" connaître leur contenu.
+
+### Ancres en début de session (responsabilité de l'utilisateur)
+
+Si la session reprend après plusieurs échanges ou un `/clear`, l'utilisateur commence par :
+```
+Tâche : [description en 1 phrase]
+Contrainte critique : [ce que Claude NE doit PAS faire]
+```
+
+### Signaux d'alerte → `/clear` immédiat
+
+L'utilisateur doit taper `/clear` si Claude :
+- Propose une solution déjà tentée et échouée dans la session
+- Oublie une contrainte donnée moins de 10 messages avant
+- Génère du code sans avoir lu les fichiers concernés
+- Reformule le même raisonnement sans progresser
+
+### Auto-vérification avant chaque réponse
+
+Avant de répondre, Claude vérifie mentalement :
+1. Ai-je lu les fichiers concernés ? (si non → lire d'abord)
+2. Cette approche a-t-elle déjà échoué ? (si oui → stop, proposer autre chose)
+3. Est-ce que je respecte les contraintes de cette session ? (si doute → relire le début du chat)
+
+---
+
 ## Engineering Operating System
 
 Règles opératoires permanentes — à appliquer avant chaque action.
@@ -54,6 +89,13 @@ Quand bloqué : **stop → résumer la compréhension → identifier les inconnu
 - [ ] Les cas limites sont-ils gérés ?
 - [ ] L'implémentation est-elle production-safe ?
 - [ ] Un senior engineer approuverait-il ce PR ?
+
+### Protocole de fermeture de session
+
+1. Tests verts + builds propres (`npm run build` backend et frontend)
+2. `handoff.md` mis à jour avec la session (fichiers modifiés, bugs corrigés, pièges)
+3. Commit avec message structuré
+4. **`git push origin master`** — Railway et Vercel déploient automatiquement depuis le remote
 
 ---
 

@@ -245,6 +245,7 @@ GET    /api/market/euronext/commodities   ← Or/Brent/Gaz/PDBC (ETF proxies US)
 GET    /api/market/:symbol/insider        ← transactions dirigeants FMP (JWT requis)
 
 GET/POST/DELETE /api/portfolios
+GET    /api/portfolios/:id/export?format=csv|pdf  ← guard exportGuard (PRO/ADVISOR)
 GET/POST/DELETE /api/watchlist
 GET/POST/DELETE /api/alerts
 GET    /api/billing/info
@@ -255,17 +256,20 @@ POST   /api/billing/webhook               ← Stripe webhook
 
 ## Système freemium
 
-| Plan | Portfolios | Alertes | Watchlist |
-|------|-----------|---------|-----------|
-| FREE | 1 | 5 | 10 |
-| STARTER | 3 | 10 | 50 |
-| PRO | 10 | 50 | 200 |
-| ADVISOR | illimité | illimité | illimité |
+| Plan | Portfolios | Alertes | Watchlist | Export CSV/PDF |
+|------|-----------|---------|-----------|----------------|
+| FREE | 1 | 5 | 10 | ❌ |
+| STARTER | 3 | 10 | 50 | ❌ |
+| PRO | 10 | 50 | 200 | ✅ |
+| ADVISOR | illimité | illimité | illimité | ✅ |
 
 **Middleware `planGuard`** branché sur :
 - `POST /api/portfolios`
 - `POST /api/alerts`
 - `POST /api/watchlist`
+
+**Middleware `exportGuard`** branché sur :
+- `GET /api/portfolios/:id/export`
 
 **Flow UI :** dépassement → axios interceptor → `CustomEvent('plan:limit-reached')` → `UpgradeModal` s'ouvre.
 
@@ -486,8 +490,9 @@ Clés API hardcodées, credentials exposés, logs de données sensibles, injecti
 | ✅ Fait | Backfill BRVM Railway | 29 symboles, 1 855 rows — 26/05/2026 |
 | ✅ Fait | Tests backend | 150 tests, coverage 65% — commits `ec0a0f1`, `c9ad2db`, `7927e30` |
 | ✅ Fait | Stripe billing end-to-end | Paiement → webhook → plan STARTER actif — 27/05/2026 |
+| ✅ Fait | Revue sécurité billing | 7 bugs corrigés, 23 tests billing — 27/05/2026 |
+| ✅ Fait | Export portfolio CSV/PDF | Feature + audit sécurité — 6 failles corrigées — 27/05/2026 |
 | 🔴 Prioritaire | Notifications email | Alertes prix par email (SendGrid ou Resend) |
-| 🔴 Prioritaire | Export portfolio | CSV/PDF des holdings et P&L |
 | 🟡 Stand-by | Clés API payantes | `MARKETDATA_API_KEY`, `IEX_CLOUD_API_KEY`, `TMX_API_KEY`, `ETF_GLOBAL_API_KEY` |
 | 🟡 Stand-by | Onglet Dirigeants | FMP plan gratuit ne couvre pas `/stable/insider-trading` (voir piège 14) |
 
@@ -729,3 +734,117 @@ Après paiement STARTER, la page `/billing` affichait "Plan actuel : PRO — Tri
 Ne jamais retirer la condition `plan === 'FREE'` dans `getEffectivePlan` — sinon un utilisateur ADVISOR en trial verrait son plan dégradé à PRO.
 
 *Dernière mise à jour : 27/05/2026 (session 13 — billing 100% cohérent)*
+
+---
+
+## Session 14 — 27/05/2026 — Revue et correction du système de paiement
+
+### Objectif
+Audit complet du système de paiement (backend + frontend + tests) pour identifier bugs et lacunes de couverture.
+
+### Bugs identifiés et corrigés
+
+| # | Sévérité | Bug | Fix |
+|---|----------|-----|-----|
+| 1 | **CRITIQUE** | Clients Stripe orphelins — `createCheckoutSession` créait un Stripe customer sans sauver le `customerId` en DB. Chaque retry = nouveau customer orphelin dans Stripe. | `upsert` immédiat sur `Subscription` après `customers.create` |
+| 2 | **CRITIQUE** | 3 handlers async sans `try/catch` — Express 4 ne capture pas les erreurs async. Si Stripe ou la DB plantait, la requête restait ouverte jusqu'au timeout sans répondre au client. | `try/catch` ajouté sur `getSubscriptionInfo`, `createCheckoutSession`, `createPortalSession` |
+| 3 | **MOYEN** | `customer.subscription.deleted` non testé — `updateMany` et `findFirst` absents du mock webhook, un test aurait crashé avec "is not a function". | Mocks ajoutés + 2 nouveaux tests (annulation normale + subscription inconnue) |
+| 4 | **MOYEN** | `GET /billing/info` pas testé — endpoint principal de la page `/billing`, 0 couverture. | 4 nouveaux tests (FREE en trial, STARTER actif, 404, 500) |
+| 5 | **MOYEN** | Pas de feedback d'erreur frontend — si Stripe était down, les boutons swallowaient silencieusement l'erreur. | État `error` + banner rouge dans `billing/page.tsx` |
+| 6 | **MINEUR** | `hasSub` excluait `PAST_DUE` — utilisateur avec paiement échoué ne voyait pas le portail Stripe pour corriger sa CB. | `status === 'ACTIVE' \|\| status === 'PAST_DUE'` |
+| 7 | **MINEUR** | Mock `upsert` sans `.mockResolvedValue({})` — passait par chance (`await undefined` fonctionne en JS). | `.mockResolvedValue({})` explicite |
+
+### Piège à éviter — Bug 1 (orphaned customers)
+Ne jamais créer un Stripe customer sans sauvegarder son ID en DB dans la même transaction. Pattern correct :
+```ts
+if (!customerId) {
+  const customer = await stripe.customers.create({ metadata: { orgId } })
+  customerId = customer.id
+  await prisma.subscription.upsert({
+    where:  { organizationId: orgId },
+    create: { stripeCustomerId: customerId, organization: { connect: { id: orgId } } },
+    update: { stripeCustomerId: customerId },
+  })
+}
+```
+
+### Fichiers modifiés
+- `backend/src/controllers/billing.controller.ts` — try/catch + fix customer orphelin
+- `backend/src/controllers/billing.controller.test.ts` — mock `organization` ajouté, 10 nouveaux tests
+- `backend/src/controllers/billing.webhook.test.ts` — mocks `updateMany`/`findFirst` + tests `deleted` + `past_due`
+
+### Résultats
+| Métrique | Avant | Après |
+|----------|-------|-------|
+| Tests billing | 3 | **23** |
+| Suite totale | 160 | **160** ✅ |
+| Build backend | ✅ | ✅ |
+| Build frontend | ✅ | ✅ |
+
+---
+
+## Session 15 — 27/05/2026 — Export portfolio CSV/PDF + audit sécurité
+
+### Feature export
+
+Implémentation complète de l'export de portefeuille depuis la page `/portfolio`.
+
+**Backend — nouveaux éléments**
+
+| Fichier | Modification |
+|---------|-------------|
+| `backend/src/middlewares/plan-guard.middleware.ts` | Ajout `exportGuard` — vérifie `exportEnabled` depuis `getLimits()`, retourne 403 avec `code: 'PLAN_LIMIT_REACHED'` si plan FREE/STARTER |
+| `backend/src/controllers/portfolio.controller.ts` | Ajout `exportPortfolio` — génère CSV (BOM UTF-8) ou PDF (pdfkit A4 paysage thème sombre) avec enrichissement live prices + fallback avgBuyPrice |
+| `backend/src/routes/portfolio.routes.ts` | Route `GET /:id/export?format=csv\|pdf` — placée AVANT `GET /:id` pour éviter conflit Express |
+
+**Frontend — nouveaux éléments**
+
+| Fichier | Modification |
+|---------|-------------|
+| `frontend/src/app/(dashboard)/portfolio/page.tsx` | Dropdown Export (CSV/PDF) dans le header "Positions ouvertes" — visible uniquement si holdings > 0 |
+| `frontend/src/components/ui/UpgradeModal.tsx` | Ressource `export` ajoutée — message adapté "disponible à partir du plan PRO" |
+
+**Flux complet :**
+1. L'utilisateur clique "Export" → dropdown CSV / PDF
+2. `handleExport(format)` : fetch natif (pas axios) avec `Authorization: Bearer <token>`
+3. Si 403 `PLAN_LIMIT_REACHED` → `CustomEvent('plan:limit-reached')` → `UpgradeModal`
+4. Si 200 → `res.blob()` → `URL.createObjectURL` → `<a>.click()` → téléchargement automatique
+
+**Choix techniques clés :**
+- `fetch` natif (pas axios) pour pouvoir récupérer le body en `.blob()` sans deserialisation JSON
+- Route `/:id/export` avant `/:id` — sinon Express traite "export" comme un portfolio ID
+- CSV avec BOM `﻿` — nécessaire pour Excel sur Windows avec caractères accentués
+- PDF : streaming `doc.pipe(res)` — headers envoyés avant la fin de génération
+
+### Audit sécurité (post-implémentation)
+
+6 failles détectées et corrigées immédiatement :
+
+| ID | Sévérité | Problème | Fichier | Corrigé |
+|----|----------|----------|---------|---------|
+| SEC-001 | 🟠 Haute | **CSV Formula Injection** — `companyName` pouvait contenir `=HYPERLINK(...)` exécuté par Excel | `portfolio.controller.ts:195` | ✅ Préfixe `'` sur les valeurs commençant par `=`, `+`, `-`, `@`, `\t`, `\r` |
+| SEC-002 | 🟡 Moyenne | **HTTP Header Injection** — `\r\n` dans le nom du portfolio injectait des headers arbitraires dans `Content-Disposition` | `portfolio.controller.ts:191` | ✅ Regex étendu : `[/\\?"<>|:*\r\n\t]` |
+| SEC-003 | 🟡 Moyenne | **PDF stream sans error handler** — erreur mid-stream après envoi des headers → connexion coupée silencieusement | `portfolio.controller.ts:229` | ✅ `doc.on('error', ...)` ajouté |
+| ARCH-001 | 🟢 Faible | **`URL.revokeObjectURL` trop tôt** — appelé synchroniquement après `click()`, fragile sur Firefox | `portfolio/page.tsx:156` | ✅ `setTimeout(..., 1000)` + append/remove DOM |
+| ARCH-002 | 🟢 Faible | **`AnimatePresence` inutilisé** — import mort, polluait le bundle | `portfolio/page.tsx:4` | ✅ Import retiré |
+| ARCH-003 | 🟢 Faible | **PDF overflow silencieux** — >20 positions sortaient de la page A4 sans erreur | `portfolio.controller.ts:296` | ✅ `MAX_ROWS` calculé dynamiquement + note "N positions non affichées — utiliser CSV" |
+
+### Points validés (✅ sécurisé)
+- **Auth + ownership chaînés** : `authenticate` → `exportGuard` → `exportPortfolio` — chaque couche vérifie indépendamment
+- **IDOR impossible** : `findFirst({ where: { id, userId } })` — export limité au portfolio de l'utilisateur courant
+- **Pas d'injection SQL** : Prisma ORM paramétré partout
+- **Fallback gracieux** : `marketRouter.getQuotes()` en try/catch, fallback sur `avgBuyPrice` si providers indisponibles
+- **Filename sanitisé** côté backend ET frontend (même regex)
+
+### Résultats post-correction
+
+| Métrique | Valeur |
+|----------|--------|
+| Tests backend | **160 / 160** ✅ |
+| TypeScript backend | 0 erreur |
+| TypeScript frontend | 0 erreur |
+
+### Piège à éviter — Route order Express
+Toujours placer `GET /:id/export` **avant** `GET /:id` dans `portfolio.routes.ts`. Sinon Express interprète `"export"` comme un portfolio ID et appelle `getPortfolioWithPrices("export")` → 404.
+
+*Dernière mise à jour : 27/05/2026 (session 15 — export portfolio + audit sécurité)*

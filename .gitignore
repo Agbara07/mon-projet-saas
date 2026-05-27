@@ -47,3 +47,6 @@ __pycache__/
 
 # ── Codegraph (base de données locale) ───────────────────────
 .codegraph/
+
+.vercel
+.env*.local

@@ -23,76 +23,97 @@ function stripeStatusToDb(s: string): 'ACTIVE' | 'INACTIVE' | 'PAST_DUE' | 'CANC
 }
 
 export const getSubscriptionInfo = async (req: AuthRequest, res: Response) => {
-  const org = await prisma.organization.findUnique({
-    where: { id: req.user!.orgId },
-    select: { plan: true, trialEndsAt: true },
-  })
-  if (!org) return res.status(404).json({ message: 'Organisation introuvable' })
+  try {
+    const org = await prisma.organization.findUnique({
+      where: { id: req.user!.orgId },
+      select: { plan: true, trialEndsAt: true },
+    })
+    if (!org) return res.status(404).json({ message: 'Organisation introuvable' })
 
-  const sub = await prisma.subscription.findUnique({
-    where: { organizationId: req.user!.orgId },
-    select: { status: true, currentPeriodEnd: true, canceledAt: true, stripePriceId: true },
-  })
+    const sub = await prisma.subscription.findUnique({
+      where: { organizationId: req.user!.orgId },
+      select: { status: true, currentPeriodEnd: true, canceledAt: true, stripePriceId: true },
+    })
 
-  const now = new Date()
-  const trialActive  = !!org.trialEndsAt && now < org.trialEndsAt
-  const trialDaysLeft = org.trialEndsAt
-    ? Math.max(0, Math.ceil((org.trialEndsAt.getTime() - now.getTime()) / 86_400_000))
-    : 0
+    const now = new Date()
+    const trialActive  = !!org.trialEndsAt && now < org.trialEndsAt
+    const trialDaysLeft = org.trialEndsAt
+      ? Math.max(0, Math.ceil((org.trialEndsAt.getTime() - now.getTime()) / 86_400_000))
+      : 0
 
-  const effectivePlan = getEffectivePlan(org.plan, org.trialEndsAt)
-  const limits        = PLAN_LIMITS[effectivePlan]
+    const effectivePlan = getEffectivePlan(org.plan, org.trialEndsAt)
+    const limits        = PLAN_LIMITS[effectivePlan]
 
-  res.json({
-    plan:          org.plan,
-    effectivePlan,
-    trialActive,
-    trialDaysLeft,
-    trialEndsAt:   org.trialEndsAt,
-    limits,
-    subscription:  sub ?? null,
-    stripePriceIds: {
-      STARTER: process.env.STRIPE_PRICE_STARTER ?? null,
-      PRO:     process.env.STRIPE_PRICE_PRO     ?? null,
-      ADVISOR: process.env.STRIPE_PRICE_ADVISOR ?? null,
-    },
-  })
+    res.json({
+      plan:          org.plan,
+      effectivePlan,
+      trialActive,
+      trialDaysLeft,
+      trialEndsAt:   org.trialEndsAt,
+      limits,
+      subscription:  sub ?? null,
+      stripePriceIds: {
+        STARTER: process.env.STRIPE_PRICE_STARTER ?? null,
+        PRO:     process.env.STRIPE_PRICE_PRO     ?? null,
+        ADVISOR: process.env.STRIPE_PRICE_ADVISOR ?? null,
+      },
+    })
+  } catch (err: any) {
+    console.error('[billing] getSubscriptionInfo:', err?.message ?? err)
+    res.status(500).json({ message: 'Erreur lors de la récupération des infos d\'abonnement' })
+  }
 }
 
 export const createCheckoutSession = async (req: AuthRequest, res: Response) => {
-  const { priceId } = req.body
-  const orgId = req.user!.orgId
+  try {
+    const { priceId } = req.body
+    const orgId = req.user!.orgId
 
-  let subscription = await prisma.subscription.findUnique({ where: { organizationId: orgId } })
-  let customerId = subscription?.stripeCustomerId
+    const subscription = await prisma.subscription.findUnique({ where: { organizationId: orgId } })
+    let customerId = subscription?.stripeCustomerId
 
-  if (!customerId) {
-    const customer = await stripe.customers.create({ metadata: { orgId } })
-    customerId = customer.id
+    if (!customerId) {
+      const customer = await stripe.customers.create({ metadata: { orgId } })
+      customerId = customer.id
+      // Persister immédiatement pour éviter des customers dupliqués si l'utilisateur clique plusieurs fois
+      await prisma.subscription.upsert({
+        where:  { organizationId: orgId },
+        create: { stripeCustomerId: customerId, organization: { connect: { id: orgId } } },
+        update: { stripeCustomerId: customerId },
+      })
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: { metadata: { orgId } },
+      success_url: `${process.env.FRONTEND_URL}/dashboard?success=true`,
+      cancel_url: `${process.env.FRONTEND_URL}/billing`,
+    })
+
+    res.json({ url: session.url })
+  } catch (err: any) {
+    console.error('[billing] createCheckoutSession:', err?.message ?? err)
+    res.status(500).json({ message: 'Erreur lors de la création du checkout' })
   }
-
-  const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    mode: 'subscription',
-    line_items: [{ price: priceId, quantity: 1 }],
-    subscription_data: { metadata: { orgId } },
-    success_url: `${process.env.FRONTEND_URL}/dashboard?success=true`,
-    cancel_url: `${process.env.FRONTEND_URL}/billing`,
-  })
-
-  res.json({ url: session.url })
 }
 
 export const createPortalSession = async (req: AuthRequest, res: Response) => {
-  const sub = await prisma.subscription.findUnique({ where: { organizationId: req.user!.orgId } })
-  if (!sub?.stripeCustomerId) return res.status(400).json({ message: 'Aucun abonnement trouvé' })
+  try {
+    const sub = await prisma.subscription.findUnique({ where: { organizationId: req.user!.orgId } })
+    if (!sub?.stripeCustomerId) return res.status(400).json({ message: 'Aucun abonnement trouvé' })
 
-  const session = await stripe.billingPortal.sessions.create({
-    customer: sub.stripeCustomerId,
-    return_url: `${process.env.FRONTEND_URL}/billing`,
-  })
+    const session = await stripe.billingPortal.sessions.create({
+      customer: sub.stripeCustomerId,
+      return_url: `${process.env.FRONTEND_URL}/billing`,
+    })
 
-  res.json({ url: session.url })
+    res.json({ url: session.url })
+  } catch (err: any) {
+    console.error('[billing] createPortalSession:', err?.message ?? err)
+    res.status(500).json({ message: 'Erreur lors de la création du portail' })
+  }
 }
 
 export const handleWebhook = async (req: Request, res: Response) => {

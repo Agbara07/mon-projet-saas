@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, Plus, Trash2, Wallet,
-  BarChart3, PieChartIcon, ArrowUpRight, RefreshCw, Radio,
+  BarChart3, PieChartIcon, ArrowUpRight, RefreshCw, Radio, Download,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { useWebSocket } from '@/hooks/useWebSocket'
@@ -53,9 +53,11 @@ export default function PortfolioPage() {
   const [showHolding,setShowHolding]  = useState(false)
   const [newName,  setNewName]        = useState('')
   const [newH, setNewH]               = useState({ symbol:'', quantity:'', avgBuyPrice:'', companyName:'' })
-  const [loading,  setLoading]        = useState(true)
+  const [loading,    setLoading]      = useState(true)
   const [histLoading,setHistLoading]  = useState(false)
-  const [error,    setError]          = useState<string|null>(null)
+  const [error,      setError]        = useState<string|null>(null)
+  const [exporting,  setExporting]    = useState<'csv'|'pdf'|null>(null)
+  const [showExport, setShowExport]   = useState(false)
   const selectedIdRef                 = useRef<string|null>(null)
 
   const { connected, subscribe } = useWebSocket(msg => {
@@ -98,6 +100,12 @@ export default function PortfolioPage() {
 
   useEffect(() => { load() }, [load])
   useEffect(() => { const sym = selected?.holdings[0]?.symbol; if (sym) loadHistory(sym, period) }, [period, selected?.id, loadHistory])
+  useEffect(() => {
+    if (!showExport) return
+    const close = () => setShowExport(false)
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [showExport])
 
   const createPortfolio = async () => {
     if (!newName.trim()) return
@@ -119,6 +127,42 @@ export default function PortfolioPage() {
   const removeHolding = async (pid: string, hid: string, sym: string) => {
     await api.delete(`/portfolios/${pid}/holdings/${hid}`)
     toast.success(`${sym} supprimé`); await loadPortfolio(pid)
+  }
+
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    if (!selected) return
+    setExporting(format)
+    setShowExport(false)
+    try {
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+      const token   = localStorage.getItem('accessToken') ?? ''
+      const res     = await fetch(`${baseURL}/portfolios/${selected.id}/export?format=${format}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        if (data.code === 'PLAN_LIMIT_REACHED') {
+          window.dispatchEvent(new CustomEvent('plan:limit-reached', { detail: data }))
+        } else {
+          toast.error('Erreur lors de l\'export')
+        }
+        return
+      }
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `portfolio-${selected.name.replace(/[/\\?"<>|:*\r\n\t]/g,'_')}-${new Date().toISOString().slice(0,10)}.${format}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      toast.success(`Export ${format.toUpperCase()} téléchargé`)
+    } catch {
+      toast.error('Impossible de télécharger le fichier')
+    } finally {
+      setExporting(null)
+    }
   }
 
   if (loading) return (
@@ -299,6 +343,38 @@ export default function PortfolioPage() {
                 <span className="text-[9px] font-bold text-[var(--fin-t3)] uppercase tracking-widest">Positions ouvertes</span>
                 <span className="text-[9px] font-mono text-[var(--fin-t3)]">({selected.holdings.length})</span>
                 <div className="flex-1"/>
+                {/* Export dropdown */}
+                {selected.holdings.length > 0 && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowExport(v => !v)}
+                      disabled={!!exporting}
+                      className="flex items-center gap-1.5 h-6 px-2 rounded text-[10px] text-[var(--fin-t2)] hover:text-[var(--fin-t1)] hover:bg-[var(--fin-hover)] transition-colors disabled:opacity-50"
+                    >
+                      {exporting
+                        ? <RefreshCw size={9} className="animate-spin"/>
+                        : <Download size={9}/>
+                      }
+                      Export
+                    </button>
+                    {showExport && (
+                      <div className="absolute right-0 top-7 z-10 w-28 rounded-lg border border-[var(--fin-border)] bg-[var(--fin-panel)] shadow-xl py-1">
+                        <button
+                          onClick={() => handleExport('csv')}
+                          className="w-full px-3 py-1.5 text-left text-[11px] text-[var(--fin-t2)] hover:text-[var(--fin-t1)] hover:bg-[var(--fin-hover)] transition-colors"
+                        >
+                          CSV
+                        </button>
+                        <button
+                          onClick={() => handleExport('pdf')}
+                          className="w-full px-3 py-1.5 text-left text-[11px] text-[var(--fin-t2)] hover:text-[var(--fin-t1)] hover:bg-[var(--fin-hover)] transition-colors"
+                        >
+                          PDF
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <button onClick={() => setShowHolding(true)}
                   className="flex items-center gap-1.5 h-6 px-2 rounded text-[10px] bg-[var(--fin-blue)] text-white hover:opacity-90 transition-opacity">
                   <Plus size={9}/> Ajouter

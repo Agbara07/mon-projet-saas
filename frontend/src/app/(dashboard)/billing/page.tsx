@@ -95,6 +95,7 @@ export default function BillingPage() {
   const [info,    setInfo]    = useState<BillingInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [paying,  setPaying]  = useState<string | null>(null)
+  const [error,   setError]   = useState<string | null>(null)
 
   useEffect(() => {
     api.get('/billing/info')
@@ -108,9 +109,12 @@ export default function BillingPage() {
     const priceId = info.stripePriceIds[planKey as keyof typeof info.stripePriceIds]
     if (!priceId) return
     setPaying(planKey)
+    setError(null)
     try {
       const r = await api.post('/billing/checkout', { priceId })
       window.location.href = r.data.url
+    } catch {
+      setError('Impossible de démarrer le paiement. Réessayez dans un instant.')
     } finally {
       setPaying(null)
     }
@@ -118,16 +122,19 @@ export default function BillingPage() {
 
   const handlePortal = async () => {
     setPaying('portal')
+    setError(null)
     try {
       const r = await api.post('/billing/portal')
       window.location.href = r.data.url
+    } catch {
+      setError('Impossible d\'accéder au portail Stripe. Réessayez dans un instant.')
     } finally {
       setPaying(null)
     }
   }
 
   const currentPlan = info?.effectivePlan ?? 'FREE'
-  const hasSub = info?.subscription?.status === 'ACTIVE'
+  const hasSub = info?.subscription?.status === 'ACTIVE' || info?.subscription?.status === 'PAST_DUE'
 
   return (
     <div className="flex flex-col h-full overflow-auto">
@@ -168,6 +175,14 @@ export default function BillingPage() {
               Passer à Pro
             </Button>
           </motion.div>
+        )}
+
+        {/* Erreur checkout / portal */}
+        {error && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-red-200 bg-red-50">
+            <AlertTriangle size={14} className="text-red-500 flex-shrink-0"/>
+            <p className="text-xs text-red-700">{error}</p>
+          </div>
         )}
 
         {/* Trial expired warning */}

@@ -8,10 +8,12 @@ var mockWebhookEvent: any = null
 
 jest.mock('../config/prisma', () => ({
   subscription: {
-    findUnique: jest.fn(),
-    create:     jest.fn().mockResolvedValue({}),
-    update:     jest.fn().mockResolvedValue({}),
-    delete:     jest.fn().mockResolvedValue({}),
+    findUnique:  jest.fn(),
+    findFirst:   jest.fn(),
+    create:      jest.fn().mockResolvedValue({}),
+    update:      jest.fn().mockResolvedValue({}),
+    updateMany:  jest.fn().mockResolvedValue({ count: 1 }),
+    delete:      jest.fn().mockResolvedValue({}),
   },
   organization: {
     update: jest.fn().mockResolvedValue({}),
@@ -121,5 +123,64 @@ describe('handleWebhook — mapping statuts Stripe → SubscriptionStatus', () =
       .send(Buffer.from('{}'))
     expect(res.status).toBe(200)
     expect(res.body).toEqual({ received: true })
+  })
+
+  it('status=past_due → organisation passe à FREE (isActive = false)', async () => {
+    mockWebhookEvent = makeSubEvent('past_due')
+    const res = await request(app)
+      .post('/webhook')
+      .set('stripe-signature', 'sig_test')
+      .send(Buffer.from('{}'))
+    expect(res.status).toBe(200)
+    expect(prisma.organization.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ plan: 'FREE' }) })
+    )
+  })
+})
+
+describe('handleWebhook — customer.subscription.deleted', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    ;(prisma.subscription.findUnique as jest.Mock).mockResolvedValue(null)
+    ;(prisma.subscription.findFirst as jest.Mock).mockResolvedValue({ organizationId: 'org1' })
+    ;(prisma.subscription.updateMany as jest.Mock).mockResolvedValue({ count: 1 })
+    ;(prisma.organization.update as jest.Mock).mockResolvedValue({})
+  })
+
+  it('marque la subscription CANCELED et repasse l\'org à FREE', async () => {
+    mockWebhookEvent = {
+      type: 'customer.subscription.deleted',
+      data: { object: { id: 'sub_test123', customer: 'cus_test123', status: 'canceled' } },
+    }
+
+    const res = await request(app)
+      .post('/webhook')
+      .set('stripe-signature', 'sig_test')
+      .send(Buffer.from('{}'))
+
+    expect(res.status).toBe(200)
+    expect(prisma.subscription.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'CANCELED' }) })
+    )
+    expect(prisma.organization.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { plan: 'FREE' } })
+    )
+  })
+
+  it('ne plante pas si la subscription n\'existe pas en DB', async () => {
+    ;(prisma.subscription.findFirst as jest.Mock).mockResolvedValue(null)
+    mockWebhookEvent = {
+      type: 'customer.subscription.deleted',
+      data: { object: { id: 'sub_unknown', customer: 'cus_test123', status: 'canceled' } },
+    }
+
+    const res = await request(app)
+      .post('/webhook')
+      .set('stripe-signature', 'sig_test')
+      .send(Buffer.from('{}'))
+
+    expect(res.status).toBe(200)
+    // org.update ne doit pas être appelé si la subscription est inconnue
+    expect(prisma.organization.update).not.toHaveBeenCalled()
   })
 })

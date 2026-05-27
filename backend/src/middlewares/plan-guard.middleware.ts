@@ -64,6 +64,40 @@ export function planGuard(resource: 'portfolios' | 'alerts' | 'watchlistItems') 
 }
 
 /**
+ * Bloque l'export si le plan ne l'autorise pas (exportEnabled: false).
+ * Retourne 403 avec code PLAN_LIMIT_REACHED pour déclencher l'UpgradeModal côté client.
+ */
+export async function exportGuard(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as any).user?.userId
+    if (!userId) return res.status(401).json({ message: 'Non authentifié' })
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { organization: { select: { plan: true, trialEndsAt: true } } },
+    })
+
+    if (!user?.organization) {
+      return res.status(403).json({ message: 'Organisation introuvable' })
+    }
+
+    const { plan, trialEndsAt } = user.organization
+    if (!getLimits(plan, trialEndsAt).exportEnabled) {
+      return res.status(403).json({
+        message: 'L\'export est disponible à partir du plan PRO',
+        code:    'PLAN_LIMIT_REACHED',
+        resource: 'export',
+        upgrade: true,
+      })
+    }
+
+    next()
+  } catch (err) {
+    next(err)
+  }
+}
+
+/**
  * Expose le plan effectif + les limites dans req pour usage downstream.
  * À utiliser sur les routes de lecture si nécessaire.
  */

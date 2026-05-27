@@ -28,8 +28,26 @@ jest.mock('../config/prisma', () => ({
 
 // planGuard contourne le check de quota — on teste le controller, pas le middleware
 jest.mock('../middlewares/plan-guard.middleware', () => ({
-  planGuard: () => (_req: any, _res: any, next: any) => next(),
+  planGuard:   () => (_req: any, _res: any, next: any) => next(),
+  exportGuard: (_req: any, _res: any, next: any) => next(),
 }))
+
+// pdfkit n'est pas testable dans jest (canvas/native bindings) — mock minimal
+jest.mock('pdfkit', () => {
+  const { PassThrough } = require('stream')
+  return jest.fn().mockImplementation(() => {
+    const stream = new PassThrough()
+    stream.pipe  = jest.fn().mockReturnValue(stream)
+    stream.rect  = jest.fn().mockReturnThis()
+    stream.fill  = jest.fn().mockReturnThis()
+    stream.text  = jest.fn().mockReturnThis()
+    stream.fontSize = jest.fn().mockReturnThis()
+    stream.fillColor = jest.fn().mockReturnThis()
+    stream.font  = jest.fn().mockReturnThis()
+    stream.end   = jest.fn().mockImplementation(function(this: any) { this.emit('end') })
+    return stream
+  })
+})
 
 jest.mock('../services/market/market-router', () => ({
   marketRouter: { getQuotes: jest.fn() },

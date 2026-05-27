@@ -7,15 +7,16 @@ import { Modal } from './Modal'
 import { Button } from './Button'
 
 interface LimitDetail {
-  resource: 'portfolios' | 'alerts' | 'watchlistItems'
+  resource: 'portfolios' | 'alerts' | 'watchlistItems' | 'export'
   limit: number
   current: number
 }
 
 const RESOURCE_LABELS: Record<string, string> = {
-  portfolios:    'portefeuille',
-  alerts:        'alerte active',
-  watchlistItems:'titre en watchlist',
+  portfolios:     'portefeuille',
+  alerts:         'alerte active',
+  watchlistItems: 'titre en watchlist',
+  export:         'export de portefeuille',
 }
 
 const PLANS = [
@@ -67,8 +68,10 @@ export function UpgradeModal() {
           <p className="font-bold text-[var(--fin-t1)] text-base">Limite de plan atteinte</p>
           {detail && (
             <p className="text-[var(--fin-t3)] text-sm mt-0.5">
-              {detail.current}/{detail.limit} {label}{detail.limit > 1 ? 's' : ''} utilisé{detail.limit > 1 ? 's' : ''}
-              {' '}— passez à un plan supérieur pour continuer
+              {detail.resource === 'export'
+                ? `L'${label} est disponible à partir du plan PRO`
+                : `${detail.current}/${detail.limit} ${label}${detail.limit > 1 ? 's' : ''} utilisé${detail.limit > 1 ? 's' : ''} — passez à un plan supérieur pour continuer`
+              }
             </p>
           )}
         </div>

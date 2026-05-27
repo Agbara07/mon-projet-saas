@@ -72,9 +72,9 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 
 export const TRIAL_DURATION_DAYS = 14
 
-/** Retourne le plan effectif : si trial actif → PRO, sinon le plan réel */
+/** Retourne le plan effectif : trial PRO uniquement pour les utilisateurs FREE */
 export function getEffectivePlan(plan: Plan, trialEndsAt: Date | null): Plan {
-  if (trialEndsAt && new Date() < trialEndsAt) return 'PRO'
+  if (plan === 'FREE' && trialEndsAt && new Date() < trialEndsAt) return 'PRO'
   return plan
 }
 

@@ -170,7 +170,11 @@ export const handleWebhook = async (req: Request, res: Response) => {
 
       await prisma.organization.update({
         where: { id: resolvedOrgId },
-        data:  { plan: isActive ? newPlan : 'FREE' },
+        data:  {
+          plan: isActive ? newPlan : 'FREE',
+          // Effacer le trial dès qu'un abonnement payant s'active
+          ...(isActive ? { trialEndsAt: null } : {}),
+        },
       })
     }
 

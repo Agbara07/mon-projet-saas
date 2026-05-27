@@ -14,6 +14,14 @@ const PRICE_TO_PLAN: Record<string, Plan> = {
   [process.env.STRIPE_PRICE_ADVISOR  ?? '']: 'ADVISOR',
 }
 
+// Stripe statuses → SubscriptionStatus enum (seules 4 valeurs dans le schéma Prisma)
+function stripeStatusToDb(s: string): 'ACTIVE' | 'INACTIVE' | 'PAST_DUE' | 'CANCELED' {
+  if (s === 'active' || s === 'trialing') return 'ACTIVE'
+  if (s === 'past_due')                   return 'PAST_DUE'
+  if (s === 'canceled')                   return 'CANCELED'
+  return 'INACTIVE' // incomplete, incomplete_expired, unpaid, paused
+}
+
 export const getSubscriptionInfo = async (req: AuthRequest, res: Response) => {
   const org = await prisma.organization.findUnique({
     where: { id: req.user!.orgId },
@@ -115,26 +123,39 @@ export const handleWebhook = async (req: Request, res: Response) => {
       }
       if (!orgId) return res.status(400).json({ message: 'orgId introuvable' })
 
-      // Lookup par stripeSubscriptionId ou organizationId pour être idempotent
-      // (created + updated arrivent simultanément — évite la race condition sur @unique)
-      const existing = await prisma.subscription.findFirst({
-        where: { OR: [{ stripeSubscriptionId: sub.id }, { organizationId: orgId }] },
-        select: { id: true, organizationId: true },
-      })
-
       const subData = {
         stripeCustomerId:     sub.customer as string,
         stripeSubscriptionId: sub.id,
         stripePriceId:        priceId,
-        status:               sub.status.toUpperCase() as any,
+        status:               stripeStatusToDb(sub.status),
         currentPeriodEnd:     new Date(sub.current_period_end * 1000),
         canceledAt:           null as Date | null,
       }
 
+      // Chercher séparément par subscriptionId et par orgId — deux enregistrements peuvent
+      // coexister en cas de webhook précédent qui a committé avant le timeout Stripe
+      const bySubId = await prisma.subscription.findUnique({
+        where:  { stripeSubscriptionId: sub.id },
+        select: { id: true, organizationId: true },
+      })
+      const byOrgId = await prisma.subscription.findUnique({
+        where:  { organizationId: orgId },
+        select: { id: true, stripeSubscriptionId: true },
+      })
+
       let resolvedOrgId: string
-      if (existing) {
-        await prisma.subscription.update({ where: { id: existing.id }, data: subData })
-        resolvedOrgId = existing.organizationId
+
+      if (bySubId && byOrgId && bySubId.id !== byOrgId.id) {
+        // Deux enregistrements en conflit : supprimer l'ancien (byOrgId) et mettre à jour le bon
+        await prisma.subscription.delete({ where: { id: byOrgId.id } })
+        await prisma.subscription.update({ where: { id: bySubId.id }, data: { ...subData, organizationId: orgId } })
+        resolvedOrgId = orgId
+      } else if (bySubId) {
+        await prisma.subscription.update({ where: { id: bySubId.id }, data: subData })
+        resolvedOrgId = bySubId.organizationId
+      } else if (byOrgId) {
+        await prisma.subscription.update({ where: { id: byOrgId.id }, data: subData })
+        resolvedOrgId = orgId
       } else {
         await prisma.subscription.create({
           data: { ...subData, organization: { connect: { id: orgId } } },
@@ -166,7 +187,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
       }
     }
   } catch (err: any) {
-    console.error('[webhook] erreur handler:', err?.message ?? err)
+    console.error('[webhook] erreur handler:', err?.message ?? err, { code: err?.code, meta: err?.meta })
     return res.status(500).json({ message: 'Erreur webhook interne' })
   }
 

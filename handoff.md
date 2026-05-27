@@ -476,13 +476,20 @@ Clés API hardcodées, credentials exposés, logs de données sensibles, injecti
 
 ## Prochaines tâches prioritaires
 
-1. **Clés API en stand-by** (services payants, à configurer à l'achat) : `MARKETDATA_API_KEY`, `IEX_CLOUD_API_KEY`, `TMX_API_KEY`, `ETF_GLOBAL_API_KEY`
-2. **Onglet Dirigeants** — stand-by (voir point 14 des pièges connus)
-3. **Stripe** — remplacer les placeholders Railway (`sk_test_placeholder`, `whsec_placeholder`) par les vraies clés Stripe
-4. ✅ **Backfill Railway** — exécuté le 26/05/2026 — 29 symboles, 1 855 rows (voir Session 9)
-5. ✅ **Tests backend** — 140 tests, coverage 65.14% (commit `ec0a0f1` — voir Session 10)
-6. **Notifications email** — alertes par email (SendGrid ou Resend)
-7. **Export portfolio** — CSV/PDF des holdings et P&L
+| Priorité | Tâche | Détail |
+|----------|-------|--------|
+| ✅ Fait | Migrer `node-cron` 3.x → 4.x | CVE corrigée le 21/05/2026 |
+| ✅ Fait | Migrer Next.js 14 → 15 + React 19 | 14 CVEs résolues le 24/05/2026 |
+| ✅ Fait | Router 7 providers BRVM | Déployés Railway le 24/05/2026 |
+| ✅ Fait | Responsive mobile toutes pages | 8 fichiers, commit `1ca934f` — 25/05/2026 |
+| ✅ Fait | Feature Euronext | 5 onglets, CAC40 + indices + forex — 26/05/2026 |
+| ✅ Fait | Backfill BRVM Railway | 29 symboles, 1 855 rows — 26/05/2026 |
+| ✅ Fait | Tests backend | 150 tests, coverage 65% — commits `ec0a0f1`, `c9ad2db`, `7927e30` |
+| ✅ Fait | Stripe billing end-to-end | Paiement → webhook → plan STARTER actif — 27/05/2026 |
+| 🔴 Prioritaire | Notifications email | Alertes prix par email (SendGrid ou Resend) |
+| 🔴 Prioritaire | Export portfolio | CSV/PDF des holdings et P&L |
+| 🟡 Stand-by | Clés API payantes | `MARKETDATA_API_KEY`, `IEX_CLOUD_API_KEY`, `TMX_API_KEY`, `ETF_GLOBAL_API_KEY` |
+| 🟡 Stand-by | Onglet Dirigeants | FMP plan gratuit ne couvre pas `/stable/insider-trading` (voir piège 14) |
 
 ---
 
@@ -607,4 +614,94 @@ SikaFinance a couvert les 29 symboles en un seul passage. La table `BRVMPriceHis
 
 ---
 
-*Dernière mise à jour : 26/05/2026 (session 10 — tests backend)*
+---
+
+## Session 11 — 26/05/2026 — Configuration Stripe complète
+
+### Actions
+- Créé 3 produits Stripe (mode test) : Starter $9/mois, Pro $29/mois, Advisor $79/mois
+- Récupéré les 3 Price IDs (`price_...`) depuis le catalogue Stripe
+- Configuré le webhook Stripe : endpoint `https://backend-production-541b.up.railway.app/api/billing/webhook`
+  - Événements : `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
+  - Signing secret (`whsec_...`) récupéré et ajouté sur Railway
+
+### Variables configurées
+
+| Variable | Destination |
+|----------|-------------|
+| `STRIPE_SECRET_KEY` | Railway + `.env` local |
+| `STRIPE_WEBHOOK_SECRET` | Railway + `.env` local |
+| `STRIPE_PRICE_STARTER` | Railway + `.env` local |
+| `STRIPE_PRICE_PRO` | Railway + `.env` local |
+| `STRIPE_PRICE_ADVISOR` | Railway + `.env` local |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Vercel + `.env` local |
+
+### Déploiement
+- Vercel redéployé `vercel --prod` → `dpl_Ab4mdxsUVNf1Ub5r6vMEnBG71ZZy` — Ready ✅
+- Railway redémarre automatiquement à chaque ajout de variable
+
+### État
+La page `/billing` est opérationnelle en production. Les boutons "Choisir" déclenchent un Stripe Checkout. Le webhook synchronise le plan sur `Organization` après paiement.
+
+---
+
+---
+
+---
+
+## Session 12 — 26/05/2026 — Debug webhook Stripe
+
+### Problèmes identifiés et corrigés (3 bugs successifs)
+
+**Bug 1 — Timeout webhook (En échec)**
+- Cause : `billing.controller.ts` utilisait `sub.metadata.orgId` mais la subscription Stripe était créée sans `orgId` dans ses métadonnées (l'`orgId` était dans le **customer**, pas la subscription).
+- Fix : ajout de `subscription_data: { metadata: { orgId } }` dans `createCheckoutSession` + fallback `stripe.customers.retrieve()` dans le webhook handler.
+- Fix additionnel : ajout d'un `try/catch` global autour des opérations DB — sans ça, une erreur async ne renvoyait aucune réponse HTTP → timeout Stripe.
+
+**Bug 2 — 500 : violation contrainte unique `organizationId`**
+- Cause : `Subscription.organizationId @unique` — l'utilisateur avait déjà un enregistrement de subscription (premier checkout échoué). L'upsert sur `stripeCustomerId` tentait un CREATE → violation unique sur `organizationId`.
+- Fix : upsert réorienté sur `organizationId` (la vraie clé métier) + `stripeCustomerId` inclus dans la branche `update`.
+
+**Bug 3 — 500 : race condition `stripeSubscriptionId`**
+- Cause : Stripe envoie `customer.subscription.created` et `customer.subscription.updated` **simultanément** (même timestamp 23:30:29). Les deux événements voyaient zéro enregistrement existant et tentaient un CREATE → violation unique sur `stripeSubscriptionId`.
+- Fix : remplacement de l'upsert par `findFirst({ OR: [{ stripeSubscriptionId }, { organizationId }] })` + branche create/update explicite → webhook **idempotent**.
+
+### Commits
+- `e329a7c` — fix(billing): résoudre orgId depuis customer metadata + try/catch webhook handler
+- `e6812f5` — fix(billing): upsert webhook sur organizationId pour éviter violation contrainte unique
+- `a2d9357` — fix(billing): webhook idempotent — findFirst OR sur subscriptionId+orgId, élimine race condition
+
+### État final ✅ — résolu le 27/05/2026
+- `customer.subscription.created` → `200 OK` à 00:31:28 UTC
+- `customer.subscription.updated` → `200 OK` à 00:30:04 UTC
+- Plan `STARTER` visible dans la navbar + base de données
+- Billing end-to-end opérationnel en production
+
+---
+
+---
+
+## Session 13 — 27/05/2026 — Fix webhook Stripe 500 (2 bugs)
+
+### Bugs identifiés et corrigés
+
+**Bug 4 — `SubscriptionStatus` enum incomplet (préventif)**
+- `sub.status.toUpperCase() as any` → Stripe peut envoyer `trialing`, `incomplete`, `unpaid`, `paused` non présents dans l'enum Prisma → `PrismaClientValidationError` → 500
+- Fix : fonction `stripeStatusToDb()` — mapping explicite des 8 statuts Stripe vers les 4 valeurs de l'enum
+
+**Bug 5 — `current_period_end` absent de la subscription (cause racine réelle)**
+- Stripe API `2025-09-30.clover` a déplacé `current_period_end` au niveau de l'item (`sub.items.data[0].current_period_end`), plus à la racine de la subscription
+- `sub.current_period_end` = `undefined` → `undefined * 1000` = `NaN` → `new Date(NaN)` = date invalide → Prisma rejette → 500
+- Fix : `rawPeriodEnd = (sub as any).current_period_end ?? (sub.items.data[0] as any)?.current_period_end`
+
+### Commits
+- `c9ad2db` — fix(billing): mapper tous les statuts Stripe → SubscriptionStatus enum (150 tests)
+- `7927e30` — fix(billing): current_period_end absent de la subscription API 2025-09-30.clover
+
+### Résultat
+- `customer.subscription.created` → `200 OK` à 00:31:28 UTC ✅
+- `customer.subscription.updated` → `200 OK` à 00:30:04 UTC ✅
+- Plan `STARTER` actif en base et affiché dans la navbar ✅
+- 150 tests backend, 10 tests webhook dédiés
+
+*Dernière mise à jour : 27/05/2026 (session 13 — fix webhook 500 résolu)*

@@ -45,20 +45,24 @@ process.env.STRIPE_PRICE_ADVISOR  = 'price_advisor'
 const app = express()
 app.post('/webhook', express.raw({ type: 'application/json' }), handleWebhook)
 
-function makeSubEvent(status: string, type = 'customer.subscription.updated') {
-  return {
-    type,
-    data: {
-      object: {
-        id:                 'sub_test123',
-        customer:           'cus_test123',
-        status,
-        metadata:           { orgId: 'org1' },
-        items:              { data: [{ price: { id: 'price_starter' } }] },
-        current_period_end: Math.floor(Date.now() / 1000) + 2_592_000,
-      },
-    },
+const PERIOD_END = Math.floor(Date.now() / 1000) + 2_592_000
+
+function makeSubEvent(
+  status: string,
+  type = 'customer.subscription.updated',
+  // periodEndOnSub: simule API < 2025-09-30 ; false simule API 2025-09-30.clover (champ sur l'item)
+  periodEndOnSub = true,
+) {
+  const itemBase = { price: { id: 'price_starter' }, current_period_end: PERIOD_END }
+  const subBase: Record<string, any> = {
+    id:       'sub_test123',
+    customer: 'cus_test123',
+    status,
+    metadata: { orgId: 'org1' },
+    items:    { data: [itemBase] },
   }
+  if (periodEndOnSub) subBase.current_period_end = PERIOD_END
+  return { type, data: { object: subBase } }
 }
 
 describe('handleWebhook — mapping statuts Stripe → SubscriptionStatus', () => {
@@ -105,5 +109,17 @@ describe('handleWebhook — mapping statuts Stripe → SubscriptionStatus', () =
       .set('stripe-signature', 'sig_test')
       .send(Buffer.from('{}'))
     expect(res.status).toBe(200)
+  })
+
+  // Régression API 2025-09-30.clover : current_period_end absent de la subscription,
+  // uniquement sur l'item → sub.current_period_end = undefined → new Date(NaN) → 500
+  it('ne doit pas 500 quand current_period_end est absent de la subscription (API 2025-09-30)', async () => {
+    mockWebhookEvent = makeSubEvent('active', 'customer.subscription.updated', false)
+    const res = await request(app)
+      .post('/webhook')
+      .set('stripe-signature', 'sig_test')
+      .send(Buffer.from('{}'))
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({ received: true })
   })
 })

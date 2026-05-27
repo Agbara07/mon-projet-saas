@@ -123,12 +123,17 @@ export const handleWebhook = async (req: Request, res: Response) => {
       }
       if (!orgId) return res.status(400).json({ message: 'orgId introuvable' })
 
+      // API 2025-09-30.clover : current_period_end est sur l'item, plus sur la subscription
+      const rawPeriodEnd: number | undefined =
+        (sub as any).current_period_end ?? (sub.items.data[0] as any)?.current_period_end
+      const currentPeriodEnd = rawPeriodEnd ? new Date(rawPeriodEnd * 1000) : null
+
       const subData = {
         stripeCustomerId:     sub.customer as string,
         stripeSubscriptionId: sub.id,
         stripePriceId:        priceId,
         status:               stripeStatusToDb(sub.status),
-        currentPeriodEnd:     new Date(sub.current_period_end * 1000),
+        currentPeriodEnd,
         canceledAt:           null as Date | null,
       }
 

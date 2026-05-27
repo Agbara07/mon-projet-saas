@@ -704,4 +704,28 @@ La page `/billing` est opérationnelle en production. Les boutons "Choisir" déc
 - Plan `STARTER` actif en base et affiché dans la navbar ✅
 - 150 tests backend, 10 tests webhook dédiés
 
-*Dernière mise à jour : 27/05/2026 (session 13 — fix webhook 500 résolu)*
+---
+
+## Session 13 (suite) — 27/05/2026 — Fix synchronisation trial vs plan payant
+
+### Problème
+Après paiement STARTER, la page `/billing` affichait "Plan actuel : PRO — Trial Pro actif encore 12 jours" alors que la navbar montrait "STARTER". Incohérence visible par l'utilisateur.
+
+### Cause racine
+`getEffectivePlan()` retournait toujours `PRO` si `trialEndsAt` était dans le futur, **sans vérifier si l'utilisateur avait déjà un plan payant**. Un utilisateur FREE en trial PRO qui passe à STARTER restait affiché PRO.
+
+### Correctifs (commit `ab721a1`)
+
+**`backend/src/config/plan-limits.ts`**
+- `getEffectivePlan` : trial PRO uniquement si `plan === 'FREE'`
+
+**`backend/src/controllers/billing.controller.ts`**
+- Webhook : `trialEndsAt` mis à `null` en base quand l'abonnement devient actif — état propre, plus de banner trial après paiement
+
+### Règle métier établie
+> Le trial PRO est réservé aux utilisateurs FREE. Dès qu'un abonnement payant s'active (STARTER/PRO/ADVISOR), le trial est effacé et le plan payant prend le dessus.
+
+### Piège à éviter
+Ne jamais retirer la condition `plan === 'FREE'` dans `getEffectivePlan` — sinon un utilisateur ADVISOR en trial verrait son plan dégradé à PRO.
+
+*Dernière mise à jour : 27/05/2026 (session 13 — billing 100% cohérent)*

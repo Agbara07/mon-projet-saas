@@ -118,7 +118,7 @@ Plateforme SaaS d'investissement boursier couvrant les marchés mondiaux (US, Eu
 ```
 mon-projet-saas/
 ├── .claude/
-│   ├── commands/              # Skills Claude Code projet (14 commandes slash)
+│   ├── commands/              # Skills Claude Code projet (15 commandes slash)
 │   │   ├── audit-securite.md
 │   │   ├── analyse-architecture-360.md
 │   │   ├── clarifier-besoin.md
@@ -132,6 +132,7 @@ mon-projet-saas/
 │   │   ├── risk-bear-analyst.md
 │   │   ├── decision-engineer.md
 │   │   ├── financial-controller-quant.md
+│   │   ├── seo-strategist.md
 │   │   └── compliance-legal-officer.md
 │   └── skills/
 │       └── ui-ux-pro-max/     # Community skill — 161 règles, 67 styles, 161 palettes
@@ -198,6 +199,7 @@ Commandes slash disponibles dans ce projet — invoquer avec `/nom` dans Claude 
 | `/decision-engineer`        | Arbitre stratégique — tranche GO/NO-GO après débat          |
 | `/financial-controller-quant` | Audit mathématique, RSI/MACD, intégrité données, comptabilité SYSCOHADA |
 | `/compliance-legal-officer` | Droit FinTech, AMF-UMOA, RGPD, licences APIs, KYC/AML       |
+| `/seo-strategist`           | SEO Phase 1 (stratégie keyword + roadmap) et Phase 2 (boucle hebdo Sonnet + MCP DataForSEO + GSC) |
 
 ## Règles de déclenchement automatique des skills
 
@@ -218,6 +220,7 @@ Commandes slash disponibles dans ce projet — invoquer avec `/nom` dans Claude 
 | Arbitrage GO/NO-GO, synthèse après débat analytique                 | `/decision-engineer`        |
 | Formule mathématique, RSI/MACD, backtest, comptabilité SYSCOHADA    | `/financial-controller-quant` |
 | Conformité, RGPD, AMF-UMOA, licence API, KYC, conseil illégal       | `/compliance-legal-officer` |
+| SEO, mots-clés, contenu, article, ranking, Google, DataForSEO, GSC  | `/seo-strategist`           |
 
 ## Providers de données de marché (14 au total)
 

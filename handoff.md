@@ -494,6 +494,7 @@ Clés API hardcodées, credentials exposés, logs de données sensibles, injecti
 | ✅ Fait | Export portfolio CSV/PDF | Feature + audit sécurité — 6 failles corrigées — 27/05/2026 |
 | ✅ Fait | Skill SEO `seo-strategist` | Créé + amélioré — agents parallèles, Playwright, Phase 3, E-E-A-T — 29/05/2026 |
 | ✅ Fait | Skill `seo-writer` | 7 modules, 6 formules scoring, 4 bugs corrigés, scaffold Next.js 15 — 29/05/2026 |
+| ✅ Fait | Stack MCPs SEO configurée | Firecrawl + GSC + Bright Data dans settings.json — 29/05/2026 |
 | 🔴 Prioritaire | Notifications email | Alertes prix par email (SendGrid ou Resend) |
 | 🔴 Prioritaire | Brancher DataForSEO MCP + GSC | Prérequis pour exécuter Phase 2 du skill SEO |
 | 🟡 Stand-by | Skill `seo-auditor` | Audit technique SEO trimestriel (sitemap, robots, CWV, canonical) |
@@ -896,10 +897,10 @@ Session stratégique (pas de code produit). Conception et construction du moteur
 - `19cb72e` — feat(seo): amélioration skill — agents parallèles, Playwright, Phase 3, E-E-A-T, topic clusters, seuil de décision
 
 ### Prochaines étapes SEO identifiées
-1. **`seo-writer`** — skill dédié rédaction (reçoit brief → produit article MDX Next.js)
-2. **`seo-auditor`** — audit technique trimestriel (sitemap, robots, CWV, canonical)
-3. **Brancher DataForSEO MCP** — prérequis pour exécuter la Phase 2 en conditions réelles
-4. **Brancher GSC API** — prérequis pour la boucle de mesure Phase 3
+1. **Brancher DataForSEO MCP** — prérequis pour exécuter la Phase 2 en conditions réelles
+2. **Activer stack MCPs SEO** (Firecrawl + GSC + Bright Data) — voir section dédiée ci-dessous
+3. **`seo-auditor`** — audit technique trimestriel (sitemap, robots, CWV, canonical)
+4. **Tester seo-writer sur premier article réel** — BRVM quick win recommandé
 
 ### Outil installé
 - `uv` 0.11.17 — gestionnaire de packages Python, installé dans `C:\Users\HP\.local\bin`
@@ -965,6 +966,194 @@ Améliorations adoptées depuis benchmark grandes plateformes :
 
 ### Prochaines étapes SEO
 1. **Brancher DataForSEO MCP** — prérequis Phase 2 seo-strategist
-2. **Brancher GSC API** — prérequis boucle de mesure Phase 3
+2. **Configurer credentials réels MCPs** — voir section dédiée ci-dessous
 3. **`seo-auditor`** — audit technique trimestriel (sitemap, robots, CWV, canonical)
 4. **Tester seo-writer sur premier article réel** — BRVM quick win recommandé (niche asymétrique)
+
+---
+
+## Session 18 — 29/05/2026 — Stack MCPs SEO
+
+### Contexte
+Configuration de la stack MCP SEO complète : Firecrawl + GSC + Bright Data.
+Intégration dans seo-strategist.md, seo-writer.md (nouveau M0), settings.json.
+
+### Architecture MCP SEO — Rôles distincts
+
+| MCP | Package npm | Rôle exclusif | Phase | Coût/mois |
+|-----|------------|---------------|-------|-----------|
+| **Firecrawl** | `firecrawl-mcp` | Crawl concurrent, sources E-E-A-T, audit liens internes | 1+2+3 | $0 (Free 1K) → $16 (Hobby 5K) |
+| **GSC MCP** | `suganthan-gsc-mcp` | Clics/impressions/CTR réels, indexation, décision loop Phase 3 | 2+3 | $0 (quota 25K/j) |
+| **Bright Data** | `@brightdata/mcp` | SERP géolocalisé UEMOA uniquement (CI, SN, BF...) | 1+2 | $0 (Free 5K req/mois) |
+| **DataForSEO** | API REST direct | Volume keywords, difficulté, PAA, rank tracking global | 1+2+3 | ~$5-15 |
+| **Playwright** | déjà branché | Validation technique HTML, CWV, screenshot mobile | 2+3 | $0 |
+
+### Fichiers modifiés (session 18)
+
+| Fichier | Modification |
+|---------|-------------|
+| `.claude/settings.json` | Ajout 3 MCP servers : firecrawl, gsc, brightdata |
+| `.claude/commands/seo-strategist.md` | Section MCP Integration refactorisée : routing table, fallback chain, appels précis par outil |
+| `.claude/commands/seo-writer.md` | M0 Cluster_StateCheck ajouté, M3 Firecrawl sources, Mode Audit GSC freshness réel |
+| `handoff.md` | Documentation setup + credentials checklist |
+
+---
+
+## Setup MCPs SEO — Guide de configuration
+
+### Prérequis
+
+```powershell
+# Vérifier Node.js ≥ 18
+node --version
+
+# Installer les packages (test rapide avant activation Claude Code)
+npx -y firecrawl-mcp --version
+npx -y suganthan-gsc-mcp --version
+npx @brightdata/mcp --version
+```
+
+---
+
+### MCP 1 — Firecrawl
+
+**Étape 1 : Créer un compte**
+→ https://www.firecrawl.dev/app/api-keys
+→ Plan Free (1 000 crédits/mois) — aucune carte bancaire requise
+
+**Étape 2 : Récupérer la clé API**
+→ Dashboard → API Keys → Copier `fc-xxxxxxxxxxxxxxxx`
+
+**Étape 3 : Configurer l'env var Windows**
+```powershell
+# PowerShell — définir pour la session
+$env:FIRECRAWL_API_KEY = "fc-xxxxxxxxxxxxxxxx"
+
+# Permanent (registre Windows)
+[System.Environment]::SetEnvironmentVariable("FIRECRAWL_API_KEY", "fc-xxxx", "User")
+```
+
+**Règle impérative :** toujours appeler avec `formats: ["markdown"]` — jamais `llm-extraction`.
+
+**Vérification :**
+```powershell
+$env:FIRECRAWL_API_KEY = "fc-xxxx"
+npx -y firecrawl-mcp
+# → Doit démarrer sans erreur
+```
+
+---
+
+### MCP 2 — GSC (Google Search Console)
+
+**Étape 1 : Créer un projet Google Cloud**
+→ https://console.cloud.google.com → Nouveau projet → "InvestSaaS-SEO"
+
+**Étape 2 : Activer l'API Search Console**
+→ APIs & Services → Bibliothèque → "Google Search Console API" → Activer
+
+**Étape 3 : Créer un Service Account (pas OAuth2 — permanent)**
+→ IAM & Admin → Comptes de service → Créer
+→ Nom : `investsaas-seo-reader`
+→ Rôle : Lecteur (Viewer)
+→ Télécharger le fichier JSON credentials
+
+**Étape 4 : Accorder l'accès dans GSC**
+→ Google Search Console (search.google.com/search-console)
+→ Paramètres → Utilisateurs et autorisations → Ajouter
+→ Email : `investsaas-seo-reader@investsaas-seo.iam.gserviceaccount.com`
+→ Permission : Lecteur
+
+**Étape 5 : Configurer l'env var**
+```powershell
+# Placer le JSON dans un dossier sécurisé (pas dans le repo git)
+$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\Users\HP\.credentials\investsaas-gsc.json"
+
+# Permanent
+[System.Environment]::SetEnvironmentVariable(
+  "GOOGLE_APPLICATION_CREDENTIALS",
+  "C:\Users\HP\.credentials\investsaas-gsc.json",
+  "User"
+)
+```
+
+**⚠️ Ne jamais committer le fichier JSON credentials dans git.**
+Vérifier que `C:\Users\HP\.credentials\` est hors du repo.
+
+**Vérification :**
+```powershell
+$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\...\investsaas-gsc.json"
+npx -y suganthan-gsc-mcp
+# → Doit démarrer sans erreur
+```
+
+---
+
+### MCP 3 — Bright Data
+
+**Étape 1 : Créer un compte**
+→ https://brightdata.com → Sign Up → Free Trial (5 000 SERP req/mois inclus)
+
+**Étape 2 : Récupérer l'API Token**
+→ Dashboard → Settings → API Tokens → Créer → Copier
+
+**Étape 3 : Récupérer le Browser Auth (optionnel — pour browser sessions)**
+→ Proxies & Scraping → Scraping Browser → Credentials
+
+**Étape 4 : Configurer les env vars**
+```powershell
+$env:BRIGHTDATA_API_TOKEN = "xxxxxxxxxxxxxxxx"
+$env:BRIGHTDATA_BROWSER_AUTH = "user:password"  # optionnel
+
+# Permanent
+[System.Environment]::SetEnvironmentVariable("BRIGHTDATA_API_TOKEN", "xxxx", "User")
+```
+
+**Scope strict :** utiliser UNIQUEMENT pour les SERP géolocalisés UEMOA.
+Ne pas utiliser pour les keywords globaux → overlap DataForSEO.
+
+**Vérification :**
+```powershell
+$env:BRIGHTDATA_API_TOKEN = "xxxx"
+npx @brightdata/mcp
+# → Doit démarrer sans erreur
+```
+
+---
+
+### Checklist activation complète
+
+```
+□ Node.js ≥ 18 installé
+□ FIRECRAWL_API_KEY configuré en env var permanente
+□ Firecrawl plan Free actif (fc-xxxxxxxx)
+□ Projet Google Cloud "InvestSaaS-SEO" créé
+□ API Search Console activée
+□ Service Account "investsaas-seo-reader" créé + JSON téléchargé
+□ JSON credentials stocké dans C:\Users\HP\.credentials\ (hors git)
+□ GOOGLE_APPLICATION_CREDENTIALS env var configurée
+□ Service Account ajouté dans GSC avec permission Lecteur
+□ Bright Data compte créé (free trial)
+□ BRIGHTDATA_API_TOKEN env var configurée
+□ settings.json vérifié — 4 mcpServers : codegraph, firecrawl, gsc, brightdata
+□ Claude Code redémarré pour charger les nouveaux MCPs
+□ Test de fumée : invoquer seo-writer Mode "Scaffold seul" sur slug test
+```
+
+### Variables d'env requises (résumé)
+
+| Variable | Description | Où la trouver |
+|----------|-------------|---------------|
+| `FIRECRAWL_API_KEY` | Clé API Firecrawl | firecrawl.dev/app/api-keys |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Chemin vers JSON Service Account | Google Cloud Console → IAM |
+| `BRIGHTDATA_API_TOKEN` | Token API Bright Data | brightdata.com → Settings → API |
+| `BRIGHTDATA_BROWSER_AUTH` | Credentials browser Bright Data | Optionnel — Scraping Browser |
+
+### Piège critique — settings.json vs env vars
+
+Les MCPs dans `settings.json` utilisent `${ENV_VAR_NAME}` comme référence.
+Claude Code résout ces variables depuis l'environnement système au démarrage.
+Si la variable n'est pas définie → le MCP démarre mais échoue silencieusement.
+Solution : toujours tester en PowerShell avant de relancer Claude Code.
+
+*Dernière mise à jour : 29/05/2026 (session 18 — stack MCPs SEO)*

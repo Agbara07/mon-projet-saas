@@ -32,6 +32,10 @@ ton jugement, pas une machine.
 ```
 INPUT : Brief structuré (seo-strategist Phase 2)
 │
+├─── [PRÉ-PIPELINE] M0: Cluster_StateCheck
+│         → état du cluster (articles existants, autorité thématique, liens internes)
+│         → aucune gate — informationnel — oriente le type d'article (pilier vs satellite)
+│
 ├─── [PARALLÈLE — invoke dispatching-parallel-agents] M7: Blog_Scaffolder
 │         → infrastructure Next.js 15 générée simultanément
 │         → ne bloque pas le pipeline contenu
@@ -71,6 +75,47 @@ OUTPUT : article.mdx + score_report + infrastructure Next.js 15
 ---
 
 ## Module Registry
+
+### M0 · Cluster_StateCheck `[PRÉ-PIPELINE — Firecrawl — aucune gate]`
+
+```
+INPUT  : cluster (ex: "brvm") + keyword principal du brief
+PROCESS: Crawl du blog InvestSaaS + calcul Topical Authority Score
+OUTPUT : cluster_state { articles_count, pilier_exists, gap_list,
+                         topical_authority, article_type, links_to_update }
+GATE   : aucune — informationnel — oriente M2 (type d'article à produire)
+
+Appel Firecrawl (1 crédit/page) :
+  firecrawl.crawl("https://investsaas.com/blog", {
+    limit: 200,
+    scrapeOptions: { formats: ["markdown", "links"] },
+    includePaths: [`/blog/${cluster}`]  // filtrer par cluster
+  })
+
+Topical Authority Score (pattern MarketMuse) :
+  articles_in_cluster = nombre d'articles trouvés dans le cluster
+  pilier_exists       = article avec H1 contenant le keyword pilier (booléen)
+
+  topical_authority = min(100,
+    articles_in_cluster × 10 +
+    pilier_exists × 20
+  )
+
+Interprétation + décision article_type :
+  TA = 0        : écrire l'article PILIER en priorité
+  TA ∈ [10,40[  : TA faible → écrire satellite simple (≤ 800 mots)
+  TA ∈ [40,70[  : TA modéré → écrire satellite enrichi (800-1500 mots)
+  TA ∈ [70,90[  : TA fort → optimiser articles existants (Mode Audit)
+  TA ≥ 90       : cluster mature → focus sur liens entrants externes
+
+gap_list : PAA et sous-sujets non couverts dans le cluster
+  → transmis à M2 pour prioriser les H2 manquants
+
+links_to_update : articles existants où ajouter un lien vers le nouvel article
+  → affiché dans le rapport de livraison (Fix HubSpot)
+```
+
+---
 
 ### M1 · Brief_Analyzer `[GATE ÉDITORIALE]`
 
@@ -193,11 +238,23 @@ Loop interne (si section ASL > 22 ou ratio > 25%, max 1 pass) :
   → remplacer mots > 3 syllabes par alternatives courtes
   → ajouter exemple numérique concret
 
+Sources primaires via Firecrawl (A·Authoritativeness E-E-A-T) :
+  Pour chaque section nécessitant une source chiffrée :
+  firecrawl.scrape("{source_url}", {
+    formats: ["markdown"],
+    onlyMainContent: true   // ← 1 crédit, pas d'AI extraction
+  })
+  Sources prioritaires BRVM   : bceao.int, crepmf.org, sikafinance.com
+  Sources prioritaires France : amf-france.org, banque-france.fr
+  Sources prioritaires US     : sec.gov, federalreserve.gov, fred.stlouisfed.org
+  → Extraire données + date → citer inline avec lien + date de la donnée
+
 Protection anti-pénalité IA (Google SpamBrain) — obligatoire :
   ✓ ≥ 1 donnée exclusive plateforme InvestSaaS par section (non reproducible ailleurs)
   ✓ ≥ 1 jugement éditorial non automatisable ("Contrairement à ce que suggèrent...")
   ✓ Variation de ton entre sections (pas de style uniforme machine)
   ✓ ≥ 1 tableau ou liste structurée avec données originales
+  ✓ ≥ 1 source primaire Firecrawl citée avec lien et date
 
 Word count check :
   PASS  : draft_words ∈ [target × 0.8, target × 1.2]
@@ -485,13 +542,13 @@ import { Disclaimer } from '@/components/ui/Disclaimer'
 
 ## Modes d'invocation
 
-| Mode | Input | Modules actifs | Usage |
-|------|-------|----------------|-------|
-| **Pipeline complet** (défaut) | Brief Phase 2 complet | M1→M6 + M7 parallèle | Production hebdo |
-| **Module isolé** | Draft ou brief existant | Un module nommé | Re-validation gate précise |
-| **Audit article** | article.mdx publié | M4 + M5 + M6 + freshness | J+30 / J+90 loop Phase 3 |
-| **Scaffold seul** | slug + cluster | M7 uniquement | Init blog avant 1er article |
-| **Fast Track BRVM** | Brief allégé (keyword + PAA) | M2→M4→M6 + M7 | Articles data courts (≤ 600 mots) |
+| Mode | Input | Modules actifs | MCPs utilisés | Usage |
+|------|-------|----------------|---------------|-------|
+| **Pipeline complet** (défaut) | Brief Phase 2 complet | M0+M1→M6+M7 | Firecrawl+GSC | Production hebdo |
+| **Module isolé** | Draft ou brief existant | Un module nommé | Selon module | Re-validation gate |
+| **Audit article** | article.mdx publié | M0+M4+M5+M6+GSC | Firecrawl+GSC | J+30/J+90 loop |
+| **Scaffold seul** | slug + cluster | M7 uniquement | — | Init blog |
+| **Fast Track BRVM** | Brief allégé (keyword+PAA) | M0+M2→M4→M6+M7 | Firecrawl | Articles data ≤ 600 mots |
 
 **Mode Fast Track BRVM** (pattern Scale.ai / articles répétitifs) :
   Déclencher pour : cours d'action, indices quotidiens, dividendes, données macro UEMOA
@@ -499,13 +556,28 @@ import { Disclaimer } from '@/components/ui/Disclaimer'
   Skip : M1 (brief simplifié accepté), M3 (ASL check uniquement), M5 (E-E-A-T réduit)
   Cible : livraison en 1 passe, < 600 mots, structured data BreadcrumbList + Article
 
-**Mode Audit — Content Decay check (Semrush pattern) :**
-  Si dateModified > 90j ET position GSC > 20 → flag DECAY_RISK
-  freshness_score :
-    dateModified < 30j → 100
-    dateModified 30-90j → 75
-    dateModified 90-180j → 50 + flag REFRESH_RECOMMENDED
-    dateModified > 180j → 25 + flag DECAY_RISK (republier ou fusionner)
+**Mode Audit — Content Decay check avec GSC MCP réel :**
+  Appel GSC MCP (lag −3j obligatoire) :
+    gsc.get_page_performance({
+      siteUrl: "https://investsaas.com",
+      page: "https://investsaas.com/blog/{slug}",
+      startDate: pub_date,
+      endDate: today − 3j,
+      dimensions: ["date", "query"]
+    })
+
+  freshness_score (combiné dateModified + signal GSC) :
+    dateModified < 30j                           → 100
+    dateModified 30-90j + impressions croissantes → 85 (laisser monter)
+    dateModified 30-90j + impressions stables    → 70 + flag REFRESH_RECOMMENDED
+    dateModified 90-180j + clics < 10/mois       → 50 + flag DECAY_RISK
+    dateModified > 180j + position > 30          → 25 + flag REPUBLIER_OU_FUSIONNER
+
+  Décision automatique par seuil :
+    freshness_score ≥ 85 → aucune action
+    freshness_score 70-84 → enrichir M3 (+300 mots + PAA manquantes)
+    freshness_score 50-69 → réécrire H1 + meta + enrichir (Mode Audit complet)
+    freshness_score < 50  → republier avec nouvel angle OU fusionner avec meilleur article
 
 **Invocation module isolé :** "Lance M5 uniquement sur ce draft" → évalue E-E-A-T seul.
 
@@ -554,17 +626,22 @@ Invoquer `superpowers:verification-before-completion` avec cette checklist avant
 ### Score Qualité Global
 quality_score : {score}/100 — {interprétation}
 
-| Module | Métrique        | Score       | Gate    | Statut |
-|--------|-----------------|-------------|---------|--------|
-| M1     | brief_score     | {X}/100     | ≥ 80    | ✅/⚠️  |
-| M2     | paa_coverage    | {X}%        | ≥ 90%   | ✅/⚠️  |
-| M3     | asl_global      | {X} mots/ph | ≤ 20    | ✅/⚠️  |
-| M3     | long_sent_ratio | {X}%        | ≤ 20%   | ✅/⚠️  |
-| M3     | flesch_estimé   | {X} (indic.)| ≥ 45    | ℹ️     |
-| M3     | word_count      | {X}/{Y} mots| ±20%    | ✅/⚠️  |
-| M4     | keyword_density | {X}%        | 1.2–1.8 | ✅/⚠️  |
-| M5     | eeeat_score     | {X}/100     | ≥ 75    | ✅/⚠️  |
-| M6     | mdx_valid       | ✓/✗         | parse   | ✅/⚠️  |
+| Module | Métrique              | Score       | Gate    | Statut |
+|--------|-----------------------|-------------|---------|--------|
+| M0     | topical_authority     | {X}/100     | info    | ℹ️     |
+| M0     | articles_in_cluster   | {X}         | info    | ℹ️     |
+| M0     | article_type          | pilier/sat. | info    | ℹ️     |
+| M1     | brief_score           | {X}/100     | ≥ 80    | ✅/⚠️  |
+| M2     | paa_coverage          | {X}%        | ≥ 90%   | ✅/⚠️  |
+| M2     | serp_feature_targeted | snippet/faq | info    | ℹ️     |
+| M3     | asl_global            | {X} mots/ph | ≤ 20    | ✅/⚠️  |
+| M3     | long_sent_ratio       | {X}%        | ≤ 20%   | ✅/⚠️  |
+| M3     | flesch_estimé         | {X} (indic.)| ≥ 45    | ℹ️     |
+| M3     | word_count            | {X}/{Y} mots| ±20%    | ✅/⚠️  |
+| M3     | firecrawl_sources     | {X} sources | ≥ 1     | ✅/⚠️  |
+| M4     | keyword_density       | {X}%        | 1.2–1.8 | ✅/⚠️  |
+| M5     | eeeat_score           | {X}/100     | ≥ 75    | ✅/⚠️  |
+| M6     | mdx_valid             | ✓/✗         | parse   | ✅/⚠️  |
 
 ### Fichiers livrés
 □ content/blog/{slug}.mdx
@@ -575,11 +652,16 @@ quality_score : {score}/100 — {interprétation}
 □ frontend/src/components/blog/*.tsx
 □ frontend/src/app/sitemap.ts
 
+### Liens internes à mettre à jour (M0 output)
+{liste articles existants dans le cluster où ajouter un lien vers ce nouvel article}
+
 ### Actions post-publication
 □ npm install next-mdx-remote gray-matter (si première fois)
-□ Soumettre URL dans GSC — URL Inspection → Request Indexing
-□ Validation Playwright J+0 (title, meta, canonical, JSON-LD, screenshot mobile)
-□ Signal GSC J+7 → décision loop seo-strategist Phase 3
+□ git add + commit + push — Vercel déploie automatiquement
+□ GSC MCP : gsc.request_indexing("https://investsaas.com/blog/{slug}")
+□ Playwright J+0 : title, meta, canonical, JSON-LD, CWV, screenshot 375px
+□ GSC MCP J+7 : gsc.get_page_performance({ endDate: today−3 }) → décision loop
+□ Firecrawl J+30 : audit liens internes → vérifier lien entrant depuis articles existants
 ```
 
 ---

@@ -503,32 +503,249 @@ export default function robots(): MetadataRoute.Robots {
 
 ---
 
-## Intégration MCP
+## Intégration MCP — Stack Complète
 
-### DataForSEO (Phase 1 + Phase 2)
+### Architecture de la stack MCP
 
-| Endpoint | Usage | Phase |
-|---------|-------|-------|
-| `keywords_data/google/search_volume/live` | Volume + difficulté pour liste de seeds | 1 + 2 |
-| `serp/google/organic/live/advanced` | SERP live — top 10, PAA, featured snippet | 1 + 2 |
-| `serp/google/organic/task_post` + `task_get` | Rank tracking asynchrone | 2 + 3 |
-| `backlinks/summary/live` | Autorité domaine concurrents | 1 |
+```
+PHASE 1 (Stratégie)    PHASE 2 (Production)    PHASE 3 (Mesure)
+──────────────────     ────────────────────     ─────────────────
+DataForSEO             DataForSEO               GSC MCP
+Bright Data            GSC MCP                  GSC MCP
+Firecrawl              Playwright               Playwright
+Playwright             Bright Data (UEMOA)
+```
 
-### Google Search Console (Phase 2 + 3)
+### Routing Table — Quel outil pour quelle tâche
 
-| Endpoint | Usage |
-|---------|-------|
-| `searchanalytics/query` | Clics, impressions, CTR, position par URL et mot-clé |
-| `urlInspection/index/inspect` | Vérifier indexation d'un article publié |
-| `sitemaps/submit` | Soumettre ou vérifier le sitemap |
+| Tâche | Outil primaire | Fallback | Phase |
+|-------|---------------|----------|-------|
+| Volume + difficulté keyword | DataForSEO | Bright Data search_engine | 1+2 |
+| PAA + Featured Snippet | DataForSEO SERP live | Playwright SERP scrape | 1+2 |
+| Rank tracking asynchrone | DataForSEO task_post | Bright Data batch | 2+3 |
+| Autorité domaine concurrent | DataForSEO backlinks | — | 1 |
+| SERP géolocalisé UEMOA | **Bright Data** | Playwright + VPN | 1+2 |
+| Crawl site concurrent | **Firecrawl** | Playwright page/page | 1 |
+| Content gap cluster | **Firecrawl** | Manuel | 1 |
+| Sources primaires articles | **Firecrawl** | Playwright | 2 |
+| Audit liens internes | **Firecrawl** | GSC crawl | 2+3 |
+| Clics / impressions / CTR | **GSC MCP** | — | 3 |
+| Indexation URL | **GSC MCP** | Playwright site: | 2+3 |
+| Validation technique HTML | Playwright | — | 2+3 |
+| Core Web Vitals | Playwright | — | 2+3 |
+| Screenshot mobile 375px | Playwright | — | 2+3 |
 
-### Playwright (Phase 2 + 3)
+### Chaîne de fallback globale
 
-Disponible via `mcp__plugin_playwright_playwright__*`. Utiliser pour :
-- `browser_navigate` + `browser_evaluate` → extraction structure SERP
-- `browser_snapshot` → validation HTML rendu (title, meta, JSON-LD)
-- `browser_take_screenshot` → audit mobile 375px
-- `browser_navigate` vers `site:investsaas.com/[slug]` → vérification indexation
+```
+DataForSEO → Bright Data → Playwright → Manuel
+(données)     (geo-SERP)   (scraping)   (dernier recours)
+```
+
+---
+
+### 1 · DataForSEO MCP (Phase 1 + 2 + 3)
+
+**MCP ID :** à configurer via API REST DataForSEO (pas encore MCP natif — appels directs)
+
+| Endpoint | Paramètres clés | Usage | Phase |
+|---------|----------------|-------|-------|
+| `keywords_data/google/search_volume/live` | `keywords[]`, `location_code: 2250` (France) | Volume + difficulté seeds | 1+2 |
+| `serp/google/organic/live/advanced` | `keyword`, `location_code`, `language_code: fr` | SERP top 10 + PAA + Featured | 1+2 |
+| `serp/google/organic/task_post` | `keyword`, `schedule_type: weekly` | Rank tracking async | 2+3 |
+| `serp/google/organic/task_get` | `task_id` | Récupérer résultats rank tracking | 2+3 |
+| `backlinks/summary/live` | `target: "sikafinance.com"` | DA concurrent | 1 |
+
+**Codes pays UEMOA pour DataForSEO :**
+```
+location_code : 2384 (Côte d'Ivoire) | 2686 (Sénégal) | 2854 (Burkina)
+language_code : fr
+→ Combiner avec Bright Data géolocalisé pour signal complet
+```
+
+---
+
+### 2 · GSC MCP — `gsc` (Phase 2 + 3)
+
+**Package :** `suganthan-gsc-mcp` (20 outils) — configuré dans `.claude/settings.json`
+**Auth :** Service Account Google (pas OAuth2 user) — token permanent
+
+**Outils disponibles par catégorie :**
+
+```
+ANALYSE (search performance)
+  get_search_analytics          → clics, impressions, CTR, position par query/page
+  get_page_performance          → performance d'une URL précise
+  compare_date_ranges           → comparer J+7 vs J+30 vs J+90
+  get_top_queries               → top queries pour une URL
+
+MONITORING (indexation)
+  inspect_url                   → statut indexation, dernière crawl, coverage
+  get_coverage_issues           → pages avec erreurs d'indexation
+  get_crawl_stats               → statistiques de crawl Googlebot
+
+REPORTING (sitemaps)
+  list_sitemaps                 → tous les sitemaps soumis
+  submit_sitemap                → soumettre un nouveau sitemap
+  get_sitemap_details           → détails d'un sitemap
+
+INDEXING (demande d'indexation)
+  request_indexing              → demander l'indexation d'une URL
+```
+
+**Protocole Phase 3 — boucle automatisée :**
+
+```python
+# J+7 (requête avec correction lag 2-3j)
+gsc.get_page_performance({
+  "siteUrl": "https://investsaas.com",
+  "startDate": publication_date,
+  "endDate": today - timedelta(days=3),   # ← correction lag obligatoire
+  "page": f"https://investsaas.com/blog/{slug}",
+  "dimensions": ["query", "date"]
+})
+
+# J+30 — décision loop
+gsc.compare_date_ranges({
+  "siteUrl": "https://investsaas.com",
+  "page": f"https://investsaas.com/blog/{slug}",
+  "range1": { "startDate": pub_date, "endDate": pub_date + 14j },
+  "range2": { "startDate": pub_date + 15j, "endDate": pub_date + 30j }
+})
+→ Impressions croissantes → laisser monter
+→ Impressions stables < 100 → enrichir M3
+→ Impressions décroissantes → audit Firecrawl + réécriture
+```
+
+**Règle lag GSC :** toujours `endDate = today − 3` dans les requêtes API. "J+7" signifie en réalité données J+4 à J+5 disponibles.
+
+---
+
+### 3 · Firecrawl MCP — `firecrawl` (Phase 1 + 2 + 3)
+
+**Package :** `firecrawl-mcp` — configuré dans `.claude/settings.json`
+**Mode obligatoire :** `formats: ["markdown"]` — JAMAIS `llm-extraction` (×7-10 crédits)
+
+**Budget crédits InvestSaaS :**
+```
+Crawl SikaFinance/Zonebourse    : 50 pages × 1 crédit = 50
+Sources primaires (×4 articles) : 20 pages × 1 crédit = 80
+Audit liens internes blog        : 100 pages × 1 crédit = 100
+TOTAL ESTIMÉ                     : ~230 crédits/mois
+Plan Free (1 000 crédits) suffit — Plan Hobby ($16) si > 4 articles/semaine
+```
+
+**Appels par usage :**
+
+```javascript
+// Phase 1 — Content gap concurrent
+firecrawl.crawl("https://sikafinance.com", {
+  limit: 50,
+  scrapeOptions: { formats: ["markdown"] },  // ← 1 crédit/page
+  excludePaths: ["/ads", "/user", "/login"]
+})
+// → Extraire : titles, H1s, slugs → identifier gaps vs nos topic clusters
+
+// Phase 1 — Crawl cluster InvestSaaS (état actuel)
+firecrawl.crawl("https://investsaas.com/blog", {
+  limit: 100,
+  scrapeOptions: { formats: ["markdown"] }
+})
+// → Lister articles existants + liens internes → alimenter M0 seo-writer
+
+// Phase 2 (M3 seo-writer) — Sources primaires pour E-E-A-T
+firecrawl.scrape("https://bceao.int/rapport-annuel", {
+  formats: ["markdown"],
+  onlyMainContent: true
+})
+// → Extraire données chiffrées pour section A·Authoritativeness
+
+// Phase 3 — Audit liens internes après publication
+firecrawl.crawl("https://investsaas.com/blog", {
+  limit: 200,
+  scrapeOptions: { formats: ["links"] }
+})
+// → Vérifier lien entrant depuis article existant (Fix HubSpot M2)
+```
+
+**Alerte crédit :** configurée dans settings.json — warning à 200, critique à 50.
+
+---
+
+### 4 · Bright Data MCP — `brightdata` (Phase 1 + 2)
+
+**Package :** `@brightdata/mcp` — configuré dans `.claude/settings.json`
+**Scope :** SERP géolocalisé UEMOA uniquement — ne pas doubler DataForSEO sur les queries globales
+
+**Valeur unique vs DataForSEO :** résultats Google depuis Abidjan / Dakar / Ouagadougou réels (residential proxies 150M IPs). Un keyword "cours BRVM" depuis Paris ≠ depuis Abidjan — intent et résultats différents.
+
+**Outils activés (base toolkit) :**
+```
+search_engine         → SERP géolocalisé temps réel
+search_engine_batch   → batch rank tracking UEMOA
+scrape_as_markdown    → scraping page individuelle
+discover              → découverte URLs depuis un domaine
+```
+
+**Appels par usage :**
+
+```javascript
+// Phase 1 — SERP vu depuis Abidjan
+brightdata.search_engine({
+  query: "cours bourse BRVM",
+  country: "CI",    // Côte d'Ivoire
+  language: "fr",
+  results_count: 10
+})
+// → Comparer avec DataForSEO France → identifier intent gap UEMOA vs FR
+
+// Phase 2 — Vérification rank UEMOA (hebdo)
+brightdata.search_engine_batch({
+  queries: ["cours SONATEL", "dividende BRVM", "indice BRVM Composite"],
+  country: "SN",    // Sénégal
+  language: "fr"
+})
+// → Position InvestSaaS dans le SERP sénégalais
+
+// Pays UEMOA disponibles
+// CI (Côte d'Ivoire) | SN (Sénégal) | BF (Burkina Faso)
+// BJ (Bénin) | TG (Togo) | ML (Mali) | NE (Niger) | GW (Guinée-Bissau)
+```
+
+**Free tier :** 5 000 requêtes SERP/mois — couvre 90× notre volume actuel (55 req/mois).
+
+---
+
+### 5 · Playwright MCP (Phase 2 + 3) — déjà branché
+
+Disponible via `mcp__plugin_playwright_playwright__*`.
+
+**Usages précis dans notre pipeline :**
+
+```javascript
+// Validation SEO technique post-publication
+browser_navigate("https://investsaas.com/blog/{slug}")
+browser_evaluate("document.title")                          // < 60 chars
+browser_evaluate("document.querySelector('meta[name=description]')?.content")
+browser_evaluate("JSON.parse(document.querySelector('script[type=application/ld+json]')?.textContent)")
+browser_evaluate("document.querySelector('link[rel=canonical]')?.href")
+
+// Core Web Vitals
+browser_evaluate(`performance.getEntriesByType('navigation')[0]`)
+// → LCP < 2.5s | CLS < 0.1 | FID < 100ms
+
+// Schema.org validation
+browser_navigate("https://validator.schema.org/#url=https://investsaas.com/blog/{slug}")
+browser_snapshot()  // vérifier 0 erreur JSON-LD
+
+// Mobile screenshot
+browser_resize(375, 812)
+browser_take_screenshot({ path: "seo-audit-{slug}-mobile.png" })
+
+// Vérification indexation (sans GSC)
+browser_navigate("https://www.google.fr/search?q=site:investsaas.com/blog/{slug}")
+browser_snapshot()  // URL apparaît → indexé ✓
+```
 
 ---
 
@@ -593,7 +810,11 @@ Disponible via `mcp__plugin_playwright_playwright__*`. Utiliser pour :
 - **superpowers:verification-before-completion avant chaque publication** — zéro oubli
 - **BRVM en priorité** — c'est la niche où l'asymétrie est maximale
 - **Topic cluster > article isolé** — chaque contenu s'inscrit dans un pilier
-- **J+30 dans GSC sans exception** — un article non mesuré est un article perdu
-- **E-E-A-T sur chaque article** — source primaire citée + dateModified à jour
+- **J+30 dans GSC MCP sans exception** — un article non mesuré est un article perdu
+- **E-E-A-T sur chaque article** — source primaire Firecrawl citée + dateModified à jour
 - **Disclaimer légal systématique** — `<Disclaimer variant="inline" />` en bas de chaque article
-- **Croiser DataForSEO + GSC** — DataForSEO estime, GSC dit la vérité
+- **Croiser DataForSEO + GSC MCP** — DataForSEO estime, GSC dit la vérité
+- **UEMOA via Bright Data uniquement** — ne pas utiliser DataForSEO pour le geo-SERP africain
+- **Firecrawl mode scrape UNIQUEMENT** — jamais llm-extraction (×7-10 crédits)
+- **GSC lag −3j obligatoire** — toujours `endDate = today − 3` dans les requêtes API GSC
+- **Fallback chain respectée** — DataForSEO → Bright Data → Playwright → Manuel

@@ -15,6 +15,38 @@
       "type": "stdio",
       "command": "codegraph",
       "args": ["serve", "--mcp"]
+    },
+
+    "firecrawl": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
+      "env": {
+        "FIRECRAWL_API_KEY": "${FIRECRAWL_API_KEY}",
+        "FIRECRAWL_RETRY_MAX_ATTEMPTS": "3",
+        "FIRECRAWL_RETRY_INITIAL_DELAY": "1000",
+        "FIRECRAWL_CREDIT_WARNING_THRESHOLD": "200",
+        "FIRECRAWL_CREDIT_CRITICAL_THRESHOLD": "50"
+      }
+    },
+
+    "gsc": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "suganthan-gsc-mcp"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "${GOOGLE_APPLICATION_CREDENTIALS}"
+      }
+    },
+
+    "brightdata": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@brightdata/mcp"],
+      "env": {
+        "API_TOKEN": "${BRIGHTDATA_API_TOKEN}",
+        "BROWSER_AUTH": "${BRIGHTDATA_BROWSER_AUTH}"
+      }
     }
   },
   "hooks": {

@@ -492,7 +492,11 @@ Clés API hardcodées, credentials exposés, logs de données sensibles, injecti
 | ✅ Fait | Stripe billing end-to-end | Paiement → webhook → plan STARTER actif — 27/05/2026 |
 | ✅ Fait | Revue sécurité billing | 7 bugs corrigés, 23 tests billing — 27/05/2026 |
 | ✅ Fait | Export portfolio CSV/PDF | Feature + audit sécurité — 6 failles corrigées — 27/05/2026 |
+| ✅ Fait | Skill SEO `seo-strategist` | Créé + amélioré — agents parallèles, Playwright, Phase 3, E-E-A-T — 29/05/2026 |
 | 🔴 Prioritaire | Notifications email | Alertes prix par email (SendGrid ou Resend) |
+| 🔴 Prioritaire | Skill `seo-writer` | Rédacteur pur — reçoit brief, produit article MDX prêt Next.js |
+| 🔴 Prioritaire | Brancher DataForSEO MCP + GSC | Prérequis pour exécuter Phase 2 du skill SEO |
+| 🟡 Stand-by | Skill `seo-auditor` | Audit technique SEO trimestriel (sitemap, robots, CWV, canonical) |
 | 🟡 Stand-by | Clés API payantes | `MARKETDATA_API_KEY`, `IEX_CLOUD_API_KEY`, `TMX_API_KEY`, `ETF_GLOBAL_API_KEY` |
 | 🟡 Stand-by | Onglet Dirigeants | FMP plan gratuit ne couvre pas `/stable/insider-trading` (voir piège 14) |
 
@@ -848,3 +852,56 @@ Implémentation complète de l'export de portefeuille depuis la page `/portfolio
 Toujours placer `GET /:id/export` **avant** `GET /:id` dans `portfolio.routes.ts`. Sinon Express interprète `"export"` comme un portfolio ID et appelle `getPortfolioWithPrices("export")` → 404.
 
 *Dernière mise à jour : 27/05/2026 (session 15 — export portfolio + audit sécurité)*
+
+---
+
+## Session 16 — 29/05/2026 — Skill SEO seo-strategist
+
+### Contexte
+Session stratégique (pas de code produit). Conception et construction du moteur SEO d'InvestSaaS en deux temps : stratégie d'abord, puis implémentation du skill.
+
+### Analyse préliminaire
+- Comparaison DataForSEO vs Google Search Console (pertinence, efficacité, performance, insuffisances)
+- Verdict : les deux sont complémentaires — DataForSEO = radar offensif (Phase 1 + 2), GSC = miroir défensif (Phase 2 + 3)
+- Budget DataForSEO estimé : ~$10-15/mois usage modéré, gratuit pour GSC
+
+### Fichiers créés
+- `.claude/commands/seo-strategist.md` — skill SEO complet (15 commandes slash → 15 skills)
+
+### Fichiers modifiés
+- `CLAUDE.md` — compteur 14→15 skills, skill enregistré dans le tableau, règle de déclenchement automatique ajoutée
+
+### Contenu du skill seo-strategist (v2 finale)
+
+| Section | Contenu |
+|---------|---------|
+| Seeds pré-remplis | 15 keywords InvestSaaS prêts pour DataForSEO |
+| Seuil de décision | Score ≥ 50 pour publier (Volume + Difficulté + Potentiel) |
+| Phase 1 — Stratégie | Brainstorming → 4 agents parallèles → matrice → topic clusters → roadmap 13 semaines |
+| Phase 2 — Production | Boucle hebdo Sonnet 4.6 + MCP DataForSEO + GSC + Playwright brief auto |
+| Phase 3 — Distribution | J+0 GSC submit, J+7 signal, J+30 décision, J+90 optimiser/abandonner |
+| E-E-A-T | 4 dimensions avec implémentation concrète InvestSaaS |
+| Topic clusters | 4 piliers (BRVM, Screener, Fondamentaux, Portfolio) + logique satellites |
+| Playwright | Extraction SERP auto + validation technique post-publication |
+| SEO Technique | metadata API Next.js 15, JSON-LD Article/FAQ, sitemap.ts, robots.ts |
+| MCP Integration | Endpoints DataForSEO + GSC + Playwright nommés |
+
+### Superpowers intégrés dans le skill
+- `superpowers:brainstorming` — avant Phase 1 pour générer les seeds
+- `superpowers:dispatching-parallel-agents` — Phase 1 en 4 agents simultanés (~20min au lieu de 2h)
+- `superpowers:verification-before-completion` — checklist on-page avant chaque publication
+
+### Commits
+- `54e9d43` — feat(seo): skill seo-strategist — Phase 1 stratégie + Phase 2 boucle Sonnet/MCP
+- `19cb72e` — feat(seo): amélioration skill — agents parallèles, Playwright, Phase 3, E-E-A-T, topic clusters, seuil de décision
+
+### Prochaines étapes SEO identifiées
+1. **`seo-writer`** — skill dédié rédaction (reçoit brief → produit article MDX Next.js)
+2. **`seo-auditor`** — audit technique trimestriel (sitemap, robots, CWV, canonical)
+3. **Brancher DataForSEO MCP** — prérequis pour exécuter la Phase 2 en conditions réelles
+4. **Brancher GSC API** — prérequis pour la boucle de mesure Phase 3
+
+### Outil installé
+- `uv` 0.11.17 — gestionnaire de packages Python, installé dans `C:\Users\HP\.local\bin`
+
+*Dernière mise à jour : 29/05/2026 (session 16 — skill seo-strategist)*

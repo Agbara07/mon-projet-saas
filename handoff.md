@@ -1221,7 +1221,91 @@ $env:VAR = "valeur"
 
 ### Prochaines actions (ordre prioritaire)
 
-1. **Bright Data** — créer zone SERP sur https://brightdata.com/cp/zones → nommer `serp`
-2. **GSC** — créer Service Account Google + JSON credentials → configurer `GOOGLE_APPLICATION_CREDENTIALS`
-3. **Test stack complète** — relancer Claude Code (charge les MCPs depuis settings.json) → tester pipeline seo-writer M0 sur cluster BRVM
-4. **Premier article** — lancer seo-writer sur keyword BRVM quick win (diff < 20, score ≥ 70)
+1. **Bright Data** — créer zone SERP manuellement sur https://brightdata.com/cp/zones → nommer `serp`
+   - Création via API impossible (HTTP 403 — token sans permission write sur les zones)
+   - Steps : Add zone → SERP API → name: `serp` → Create
+2. **GSC** — Service Account Google à créer (gcloud CLI absent — via web UI uniquement)
+   - Steps documentés dans session 20 ci-dessous
+3. **Test stack complète** — relancer Claude Code → tester pipeline seo-writer M0 sur cluster BRVM
+4. **Premier article** — keyword BRVM quick win (diff < 20, score ≥ 70)
+
+---
+
+## Session 20 — 29/05/2026 — Configuration zones + GSC Service Account
+
+### Bright Data — Zone SERP
+
+**Statut :** ⚙️ À créer manuellement (API write = 403)
+
+**Raison blocage API :** le token `0c2e03c3...` n'a pas la permission `zone:write`.
+Changer les permissions sur https://brightdata.com/cp/setting/users ou créer la zone manuellement.
+
+**Steps dashboard (https://brightdata.com/cp/zones) :**
+```
+1. Add zone (bouton haut droite)
+2. Type : SERP API
+3. Name : serp  (exact — pas d'espace, minuscules)
+4. Create / Add
+5. Vérifier que la zone apparaît dans la liste
+```
+
+**Test post-création :**
+```powershell
+$key = [System.Environment]::GetEnvironmentVariable("BRIGHTDATA_API_TOKEN","User")
+$h   = @{ "Authorization"="Bearer $key"; "Content-Type"="application/json" }
+Invoke-RestMethod -Uri "https://api.brightdata.com/serp/req?zone=serp" `
+  -Method POST -Headers $h `
+  -Body '{"keyword":"cours bourse BRVM","country":"CI"}'
+```
+→ Résultats Google CI = zone active ✅
+
+---
+
+### GSC — Service Account (gcloud CLI absent — web UI requis)
+
+**Statut :** ⏳ Pending — steps fournis, action utilisateur requise
+
+**Étapes (https://console.cloud.google.com) :**
+
+| # | Où | Action |
+|---|----|--------|
+| 1 | Cloud Console → menu projet | New Project → nom : `InvestSaaS-SEO` |
+| 2 | APIs & Services → Library | Chercher "Google Search Console API" → Enable |
+| 3 | IAM & Admin → Service Accounts | Create → name: `investsaas-seo-reader` → Role: Viewer |
+| 4 | Service Account → Keys tab | Add Key → JSON → Download |
+| 5 | Terminal | `move "$env:USERPROFILE\Downloads\investsaas-seo-*.json" "C:\Users\HP\.credentials\investsaas-gsc.json"` |
+| 6 | IAM → Service Accounts | Copier l'email `investsaas-seo-reader@investsaas-seo.iam.gserviceaccount.com` |
+| 7 | search.google.com/search-console | Paramètres → Utilisateurs → Ajouter email SA → Lecteur |
+| 8 | Claude Code | Configurer `GOOGLE_APPLICATION_CREDENTIALS` env var |
+
+**Commande de configuration finale (après étape 5) :**
+```powershell
+$credPath = "C:\Users\HP\.credentials\investsaas-gsc.json"
+$env:GOOGLE_APPLICATION_CREDENTIALS = $credPath
+[System.Environment]::SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", $credPath, "User")
+```
+
+**Test post-configuration :**
+```powershell
+$env:GOOGLE_APPLICATION_CREDENTIALS = [System.Environment]::GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS","User")
+npx -y suganthan-gsc-mcp  # doit démarrer sans erreur
+```
+
+---
+
+### Infrastructure credentials — État
+
+| Élément | Statut |
+|---------|--------|
+| `C:\Users\HP\.credentials\` | ✅ Créé |
+| `.gitignore` règles credentials | ✅ Ajouté (`*.json.credentials`, `*-service-account.json`) |
+| `investsaas-gsc.json` | ❌ À placer après téléchargement |
+| `GOOGLE_APPLICATION_CREDENTIALS` env var | ❌ À configurer |
+
+### Récapitulatif stack MCPs — 29/05/2026
+
+| MCP | Clé | Package | Env var | Statut final |
+|-----|-----|---------|---------|-------------|
+| Firecrawl | `fc-38898...` | `firecrawl-mcp` v3.20.1 | ✅ Permanent | ✅ **100% opérationnel** |
+| Bright Data | `0c2e03c3...` | `@brightdata/mcp` v2.9.5 | ✅ Permanent | ⚙️ **Clé OK — zone SERP à créer** |
+| GSC | — | `suganthan-gsc-mcp` v2.2.2 | ❌ | ⏳ **Service Account à créer** |

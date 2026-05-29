@@ -81,6 +81,7 @@ D2 · Score seo-strategist     20 pts
   score_pub < 30              → 0
 
 D3 · Angle différenciant      25 pts
+  (source : analyse SERP Playwright incluse dans le brief — pas de scraping frais)
   absent des top 3 SERP       → 25
   présent, traitement distinct → 15
   identique au top 1          → 0
@@ -129,9 +130,9 @@ GATE : paa_coverage ≥ 90%
 | Champ | Valeur |
 |-------|--------|
 | INPUT | Outline validé (paa_coverage ≥ 90%) |
-| PROCESS | Rédige section par section · Flesch_FR par section · loop interne si < 40 |
-| OUTPUT | Draft brut + `flesch_global` + `section_scores[]` |
-| GATE | `flesch_global ≥ 45` → PASS · `< 45` → STOP + sections KO + suggestion |
+| PROCESS | Rédige section par section · Flesch_FR par section · loop interne si < 40 · word count check |
+| OUTPUT | Draft brut + `flesch_global` + `section_scores[]` + `word_count` |
+| GATE | `flesch_global ≥ 45` ET `word_count ∈ [target×0.8, target×1.2]` → PASS · sinon STOP |
 
 ```
 Flesch_FR = 207 − (1.015 × ASL) − (73.6 × ASW)
@@ -139,6 +140,11 @@ Flesch_FR = 207 − (1.015 × ASL) − (73.6 × ASW)
   ASW = syllabes / mots
 
 Flesch_global = Σ(Flesch_section_i × mots_i) / Σ(mots_i)
+
+word_count_check :
+  target = longueur_cible du brief (moyenne top 3 SERP ±20%)
+  PASS  : draft_words ∈ [target × 0.8, target × 1.2]
+  FAIL  : STOP + "X mots produits vs Y cible (écart Z%) — enrichir ou condenser"
 
 Loop interne (si section_score < 40, max 1 pass) :
   → couper phrases > 20 mots
@@ -151,7 +157,7 @@ Voix par cluster :
   Outils     → orienté action, étapes numérotées
   Acquisition → comparatif, bénéfices plateforme, social proof
 
-GATE : Flesch_global ≥ 45
+GATE : flesch_global ≥ 45 ET word_count ∈ [target×0.8, target×1.2]
 ```
 
 ---
@@ -322,15 +328,26 @@ eeeat_score = E_exp + E_expt + A_auth + T_trust   GATE : ≥ 75
 ### F6 · Quality Score Global (rapport livraison)
 ```
 quality_score =
-  brief_score       × 0.15 +
-  paa_coverage      × 0.20 +
-  flesch_global     × 0.20 +
-  seo_density_norm  × 0.20 +
-  eeeat_score       × 0.25
+  brief_score             × 0.15 +
+  paa_coverage            × 0.20 +
+  flesch_clamped          × 0.20 +
+  seo_density_norm        × 0.20 +
+  eeeat_floored           × 0.25
 
-seo_density_norm =
-  100                            si density ∈ [1.2%, 1.8%]
-  100 − |density − 1.5| × 1000  sinon (pénalité linéaire)
+# Clamping pour garantir quality_score ∈ [0, 100]
+flesch_clamped  = max(0, min(100, flesch_global))
+eeeat_floored   = max(0, eeeat_score)
+
+# Formule seo_density_norm corrigée (distance depuis borne)
+seo_density_norm :
+  si density ∈ [1.2%, 1.8%] → 100
+  sinon :
+    dist = max(0, 1.2 − density) + max(0, density − 1.8)
+    seo_density_norm = max(0, 100 − dist × 500)
+
+  # density = 1.0% → dist = 0.2 → 100−100 = 0   (pénalité max)
+  # density = 1.1% → dist = 0.1 → 100−50  = 50  (pénalité modérée)
+  # density = 2.0% → dist = 0.2 → 100−100 = 0   (pénalité max)
 
 Interprétation :
   ≥ 85   Article premium     → publier immédiatement

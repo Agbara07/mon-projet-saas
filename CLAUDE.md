@@ -118,7 +118,7 @@ Plateforme SaaS d'investissement boursier couvrant les marchés mondiaux (US, Eu
 ```
 mon-projet-saas/
 ├── .claude/
-│   ├── commands/              # Skills Claude Code projet (15 commandes slash)
+│   ├── commands/              # Skills Claude Code projet (16 commandes slash)
 │   │   ├── audit-securite.md
 │   │   ├── analyse-architecture-360.md
 │   │   ├── clarifier-besoin.md
@@ -133,6 +133,7 @@ mon-projet-saas/
 │   │   ├── decision-engineer.md
 │   │   ├── financial-controller-quant.md
 │   │   ├── seo-strategist.md
+│   │   ├── seo-writer.md
 │   │   └── compliance-legal-officer.md
 │   └── skills/
 │       └── ui-ux-pro-max/     # Community skill — 161 règles, 67 styles, 161 palettes
@@ -200,6 +201,7 @@ Commandes slash disponibles dans ce projet — invoquer avec `/nom` dans Claude 
 | `/financial-controller-quant` | Audit mathématique, RSI/MACD, intégrité données, comptabilité SYSCOHADA |
 | `/compliance-legal-officer` | Droit FinTech, AMF-UMOA, RGPD, licences APIs, KYC/AML       |
 | `/seo-strategist`           | SEO Phase 1 (stratégie keyword + roadmap) et Phase 2 (boucle hebdo Sonnet + MCP DataForSEO + GSC) |
+| `/seo-writer`               | Rédacteur SEO pur — reçoit brief Phase 2 → livre article MDX complet (7 modules, 6 formules scoring, scaffold Next.js 15) |
 
 ## Règles de déclenchement automatique des skills
 
@@ -221,6 +223,7 @@ Commandes slash disponibles dans ce projet — invoquer avec `/nom` dans Claude 
 | Formule mathématique, RSI/MACD, backtest, comptabilité SYSCOHADA    | `/financial-controller-quant` |
 | Conformité, RGPD, AMF-UMOA, licence API, KYC, conseil illégal       | `/compliance-legal-officer` |
 | SEO, mots-clés, contenu, article, ranking, Google, DataForSEO, GSC  | `/seo-strategist`           |
+| Écrire un article SEO, brief Phase 2 prêt, MDX, blog Next.js        | `/seo-writer`               |
 
 ## Providers de données de marché (14 au total)
 

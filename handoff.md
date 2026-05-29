@@ -493,8 +493,8 @@ Clés API hardcodées, credentials exposés, logs de données sensibles, injecti
 | ✅ Fait | Revue sécurité billing | 7 bugs corrigés, 23 tests billing — 27/05/2026 |
 | ✅ Fait | Export portfolio CSV/PDF | Feature + audit sécurité — 6 failles corrigées — 27/05/2026 |
 | ✅ Fait | Skill SEO `seo-strategist` | Créé + amélioré — agents parallèles, Playwright, Phase 3, E-E-A-T — 29/05/2026 |
+| ✅ Fait | Skill `seo-writer` | 7 modules, 6 formules scoring, 4 bugs corrigés, scaffold Next.js 15 — 29/05/2026 |
 | 🔴 Prioritaire | Notifications email | Alertes prix par email (SendGrid ou Resend) |
-| 🔴 Prioritaire | Skill `seo-writer` | Rédacteur pur — reçoit brief, produit article MDX prêt Next.js |
 | 🔴 Prioritaire | Brancher DataForSEO MCP + GSC | Prérequis pour exécuter Phase 2 du skill SEO |
 | 🟡 Stand-by | Skill `seo-auditor` | Audit technique SEO trimestriel (sitemap, robots, CWV, canonical) |
 | 🟡 Stand-by | Clés API payantes | `MARKETDATA_API_KEY`, `IEX_CLOUD_API_KEY`, `TMX_API_KEY`, `ETF_GLOBAL_API_KEY` |
@@ -905,3 +905,46 @@ Session stratégique (pas de code produit). Conception et construction du moteur
 - `uv` 0.11.17 — gestionnaire de packages Python, installé dans `C:\Users\HP\.local\bin`
 
 *Dernière mise à jour : 29/05/2026 (session 16 — skill seo-strategist)*
+
+---
+
+## Session 17 — 29/05/2026 — Skill seo-writer
+
+### Contexte
+Session de conception complète via brainstorming → spec → vérification → implémentation.
+
+### Processus suivi
+1. **3 questions de clarification** : scope (pur rédacteur + scaffold Next.js), modèle qualité (pipeline + scoring combinés), comportement gate failure (hybride technique/éditorial)
+2. **5 sections de design** validées une par une : architecture, modules, formules, MDX+infra, intégrations
+3. **4 bugs corrigés** lors de la vérification pré-implémentation :
+   - `seo_density_norm` : formule `×1000` produisait des valeurs négatives → remplacée par `dist × 500`
+   - M3 : gate word count manquante → ajoutée `∈ [target×0.8, target×1.2]`
+   - F6 : `flesch_clamped` et `eeeat_floored` ajoutés pour garantir `quality_score ∈ [0,100]`
+   - M1/D3 : ambiguïté source SERP clarifiée (brief, pas scraping frais)
+
+### Fichiers créés
+- `.claude/commands/seo-writer.md` — skill opérationnel (7 modules, 6 formules, 4 modes)
+- `docs/superpowers/specs/2026-05-29-seo-writer-design.md` — spec de design validé
+
+### Fichiers modifiés
+- `CLAUDE.md` — compteur 15→16 skills, skill enregistré tableau + règle auto-déclenchement
+- `handoff.md` — session 17 ajoutée, tâche seo-writer ✅
+
+### Architecture du skill (résumé)
+| Composant | Détail |
+|-----------|--------|
+| **7 modules** | M1 Brief_Analyzer · M2 Outline_Engine · M3 Draft_Engine · M4 SEO_Evaluator · M5 EEEAT_Evaluator · M6 MDX_Renderer · M7 Blog_Scaffolder |
+| **Gates éditoriales** | M1 (≥80) · M2 (PAA ≥90%) · M3 (Flesch ≥45 + word count ±20%) · M5 (≥75) → STOP+humain |
+| **Gates techniques** | M4 (density 1.2–1.8%) · M6 (MDX parse) → auto-retry ×2 |
+| **Parallélisme** | M7 démarre avec M1 via `dispatching-parallel-agents` |
+| **Output** | article.mdx + score_report (quality_score pondéré) + infrastructure Next.js 15 |
+| **Superpowers** | `dispatching-parallel-agents` (M7) · `verification-before-completion` (post-M6) · `systematic-debugging` (gate fail ×2 suggéré) |
+
+### Commits
+- `1f89355` — docs(seo): spec seo-writer — Module Registry + Orchestrateur, 7 modules, 6 formules scoring
+
+### Prochaines étapes SEO
+1. **Brancher DataForSEO MCP** — prérequis Phase 2 seo-strategist
+2. **Brancher GSC API** — prérequis boucle de mesure Phase 3
+3. **`seo-auditor`** — audit technique trimestriel (sitemap, robots, CWV, canonical)
+4. **Tester seo-writer sur premier article réel** — BRVM quick win recommandé (niche asymétrique)

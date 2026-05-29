@@ -1157,3 +1157,71 @@ Si la variable n'est pas définie → le MCP démarre mais échoue silencieuseme
 Solution : toujours tester en PowerShell avant de relancer Claude Code.
 
 *Dernière mise à jour : 29/05/2026 (session 18 — stack MCPs SEO)*
+
+---
+
+## Session 19 — 29/05/2026 — Activation credentials MCPs SEO
+
+### État d'activation par MCP
+
+| MCP | Package | Clé | Statut | Prochaine action |
+|-----|---------|-----|--------|-----------------|
+| **Firecrawl** | `firecrawl-mcp` v3.20.1 | `fc-38898...` (permanent) | ✅ **OPÉRATIONNEL** — scrape confirmé | Aucune |
+| **Bright Data** | `@brightdata/mcp` v2.9.5 | `0c2e03c3...` (permanent) | ⚙️ **Clé valide — zone manquante** | Créer zone SERP dans dashboard |
+| **GSC** | `suganthan-gsc-mcp` v2.2.2 | — | ⏳ **En attente** | Service Account Google à créer |
+
+### Variables d'environnement configurées (registre Windows User)
+
+| Variable | Valeur (masquée) | Permanent |
+|----------|-----------------|-----------|
+| `FIRECRAWL_API_KEY` | `fc-38898...` | ✅ Registre User |
+| `BRIGHTDATA_API_TOKEN` | `0c2e03c3...` | ✅ Registre User |
+| `GOOGLE_APPLICATION_CREDENTIALS` | — | ❌ À configurer |
+
+### Diagnostic Firecrawl ✅
+
+- Clé `fc-38898577f42543d2a6990b78408351a1` — valide, 35 chars
+- Scrape `https://example.com` → markdown retourné ✅
+- Package MCP démarre sans erreur ✅
+- Plan : Free (1 000 crédits/mois)
+
+### Diagnostic Bright Data ⚙️
+
+- Token `0c2e03c3-43de-4127-b7fc-ad0cdf27b998` — authentifié (HTTP 400/422, pas 401)
+- Package `@brightdata/mcp` démarre et attend commandes JSON ✅
+- **Blocage :** aucune zone SERP configurée sur le compte → erreur "Unknown zone"
+- **Fix :** aller sur https://brightdata.com/cp/zones → Add zone → SERP API → nommer `serp` → sauvegarder
+
+### Diagnostic GSC ⏳
+
+- Package `suganthan-gsc-mcp` v2.2.2 disponible sur npm ✅
+- **Prérequis non complétés :**
+  - [ ] Vérifier que `investsaas.com` est dans Google Search Console
+  - [ ] Créer projet Google Cloud "InvestSaaS-SEO"
+  - [ ] Activer API Search Console
+  - [ ] Créer Service Account `investsaas-seo-reader`
+  - [ ] Télécharger JSON credentials → `C:\Users\HP\.credentials\investsaas-gsc.json`
+  - [ ] Ajouter Service Account dans GSC (Lecteur)
+  - [ ] Configurer `GOOGLE_APPLICATION_CREDENTIALS` env var
+
+### Infrastructure préparée
+
+- `C:\Users\HP\.credentials\` — dossier créé (hors git) ✅
+- `.gitignore` — règles credentials ajoutées (`*.json.credentials`, `*-service-account.json`) ✅
+- `.claude/settings.json` — 4 MCPs configurés (codegraph, firecrawl, gsc, brightdata) ✅
+
+### Piège env vars Windows → Claude Code
+
+`$env:VAR = "..."` dans le terminal bash (préfixe `!`) ne fonctionne pas — c'est de la syntaxe PowerShell.
+Solution : toujours configurer via l'outil PowerShell de Claude Code ou en PowerShell natif :
+```powershell
+$env:VAR = "valeur"
+[System.Environment]::SetEnvironmentVariable("VAR", "valeur", "User")
+```
+
+### Prochaines actions (ordre prioritaire)
+
+1. **Bright Data** — créer zone SERP sur https://brightdata.com/cp/zones → nommer `serp`
+2. **GSC** — créer Service Account Google + JSON credentials → configurer `GOOGLE_APPLICATION_CREDENTIALS`
+3. **Test stack complète** — relancer Claude Code (charge les MCPs depuis settings.json) → tester pipeline seo-writer M0 sur cluster BRVM
+4. **Premier article** — lancer seo-writer sur keyword BRVM quick win (diff < 20, score ≥ 70)

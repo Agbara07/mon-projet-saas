@@ -9,6 +9,12 @@ node_modules/
 .env.*.local
 .env.production
 
+# ── Credentials MCP SEO (JAMAIS committer) ───────────────────
+*.json.credentials
+*-service-account.json
+*-credentials.json
+.credentials/
+
 # ── Build outputs ────────────────────────────────────────────
 dist/
 build/

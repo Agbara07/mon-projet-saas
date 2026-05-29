@@ -942,6 +942,26 @@ Session de conception complète via brainstorming → spec → vérification →
 
 ### Commits
 - `1f89355` — docs(seo): spec seo-writer — Module Registry + Orchestrateur, 7 modules, 6 formules scoring
+- `7b77744` — feat(seo): skill seo-writer — 7 modules, 6 formules scoring, scaffold Next.js 15
+
+### Corrections post-audit Red Team (session 17 suite — 29/05/2026)
+7 fixes appliqués après analyse expert (risk-bear-analyst + architecture-360 + analyst-wallstreet) :
+
+| # | Sévérité | SPOF | Fix |
+|---|----------|------|-----|
+| 1 | 🔴 CRITIQUE | M7 path `content/blog/` racine repo → incompatible Vercel production | Déplacé vers `frontend/content/blog/` + lib/blog.ts path corrigé + git commit obligatoire |
+| 2 | 🔴 CRITIQUE | DataForSEO absent → brief_score max 75 < 80 → pipeline bloqué systématiquement | Mode dégradé M1 : seuil 65/100 + D1 évaluation manuelle |
+| 3 | 🟠 IMPORTANT | Flesch_FR calculé par LLM = non déterministe (syllabes estimées ±5-8 pts) | Gate primaire remplacée par ASL ≤ 20 mots/phrase (déterministe) + Flesch indicatif |
+| 4 | 🟠 IMPORTANT | M4+M5 séquentiels alors qu'indépendants (+30% temps inutile) | Parallélisation via dispatching-parallel-agents documentée |
+| 5 | 🟡 MOYEN | Aucun ciblage SERP Features (Featured Snippet, Knowledge Panel, Sitelinks) | Étape 0 ajoutée en M2 : SERP Feature Targeting avant outline |
+| 6 | 🟡 MOYEN | Aucune protection Google SpamBrain / Helpful Content Updates | Layer humanisation obligatoire en M3 : données exclusives + jugement éditorial |
+| 7 | 🟡 MOYEN | Pas de Content Decay detection en mode Audit | freshness_score ajouté + flag DECAY_RISK / REFRESH_RECOMMENDED |
+
+Améliorations adoptées depuis benchmark grandes plateformes :
+- **Clearscope** : LSI étendu top 10 (≥ 8 termes, pas 5)
+- **HubSpot** : lien entrant obligatoire depuis article existant du cluster (M2)
+- **Scale.ai** : Mode 5 Fast Track pour articles data BRVM courts (≤ 600 mots)
+- **Semrush** : Content Decay protocol en mode Audit (freshness_score)
 
 ### Prochaines étapes SEO
 1. **Brancher DataForSEO MCP** — prérequis Phase 2 seo-strategist

@@ -48,11 +48,11 @@ INPUT : Brief structuré (seo-strategist Phase 2)
       │                                          + word_count ∈ [target×0.8, target×1.2]
       │   FAIL → STOP + sections défaillantes + écart word count → humain requis
       │
-      M4: SEO_Evaluator ──────── GATE TECHNIQUE : density ∈ [1.2%, 1.8%]
-      │   FAIL → auto-retry silencieux ×2 → ⚠️ GATE_PARTIAL si toujours KO
-      │
-      M5: EEEAT_Evaluator ────── GATE ÉDITORIALE : eeeat_score ≥ 75/100
-      │   FAIL → STOP + diagnostic 4 dimensions + correctifs → humain requis
+      ├── M4: SEO_Evaluator ─── GATE TECHNIQUE : density ∈ [1.2%, 1.8%]
+      │   │   FAIL → auto-retry ×2 → ⚠️ GATE_PARTIAL     [PARALLÉLISABLES]
+      │   │                                                via dispatching-
+      ├── M5: EEEAT_Evaluator ── GATE ÉDITORIALE : ≥ 75   parallel-agents
+      │       FAIL → STOP + diagnostic 4 dimensions → humain requis
       │
       M6: MDX_Renderer ───────── GATE TECHNIQUE : MDX valide + frontmatter 12 champs
           FAIL → auto-retry silencieux ×2 → ⚠️ GATE_PARTIAL si toujours KO
@@ -79,12 +79,20 @@ INPUT  : Brief structuré seo-strategist Phase 2
 PROCESS: Score 5 dimensions pondérées → brief_score (0-100)
 OUTPUT : brief_score + diagnostic par dimension
 GATE   : brief_score ≥ 80 → PASS | < 80 → STOP + rapport dimensionnel
+         (MODE DÉGRADÉ : si DataForSEO absent → seuil abaissé à 65, D1 évalué manuellement)
 
 D1 · Complétude données       25 pts
+  [Si DataForSEO branché — données API]
   volume + difficulté + PAA ≥ 3 items        → 25
   volume + difficulté + PAA < 3 items        → 15
   volume seul présent                        → 5
   aucune donnée DataForSEO                   → 0
+
+  [Si DataForSEO ABSENT — évaluation manuelle obligatoire]
+  volume estimé > 500/mois + difficulté estimée + ≥ 3 PAA SERP → 20
+  données partielles estimées                → 10
+  aucune estimation possible                 → 0
+  → seuil global abaissé à 65/100 (mode dégradé)
 
 D2 · Score seo-strategist     20 pts
   score_pub ≥ 70                             → 20
@@ -123,12 +131,31 @@ GATE   : paa_coverage ≥ 90% → PASS | < 90% → STOP + PAA non couvertes list
 
 paa_coverage = (PAA_mappées / PAA_total) × 100
 
+Étape 0 — SERP Feature Targeting (avant outline) :
+  Analyser la SERP du brief pour identifier les features disponibles :
+  Featured Snippet disponible?
+    → OUI : écrire un bloc réponse directe 40-60 mots AVANT le premier H2
+             (format : "X est... / Pour Y, il faut... / La formule est...")
+    → NON : intro narrative standard
+  PAA boxes présentes?
+    → OUI : M2 couvre déjà via paa_coverage — s'assurer que schemaType=FAQPage
+  Knowledge Panel ?
+    → OUI : enrichir JSON-LD avec champs supplémentaires (publisher, sameAs)
+  Sitelinks?
+    → OUI : structurer H2/H3 sur 3+ niveaux hiérarchiques cohérents
+
 Sections obligatoires systématiques (ordre) :
+  0. § Featured Snippet (si opportunité détectée — 40-60 mots, réponse directe)
   1. § Intro      — keyword dans les 100 premiers mots, accroche chiffrée
   2. § Corps      — PAA mappées en H2/H3 (ordre croissant de profondeur)
   3. § CTA        — lien vers feature InvestSaaS identifiée en D4
   4. § Conclusion — résumé actionnable + keyword de clôture
   5. <Disclaimer variant="inline" />
+
+Maillage interne obligatoire (pattern HubSpot) :
+  → 1 lien sortant vers la page pilier du cluster
+  → 1 lien entrant à ajouter sur un article existant du cluster (indiquer lequel)
+  → si article pilier : lister les satellites à créer pour compléter le cluster
 
 word_count_target = moyenne des mots top 3 SERP (issu du brief)
   (transmis tel quel à M3 — ne pas recalculer)
@@ -142,21 +169,35 @@ GATE : paa_coverage ≥ 90%
 
 ```
 INPUT  : Outline validé (paa_coverage ≥ 90%) + word_count_target
-PROCESS: Rédige section par section · calcule Flesch_FR · loop interne si < 40
-OUTPUT : Draft brut + flesch_global + section_scores[] + word_count produit
-GATE   : flesch_global ≥ 45 ET word_count ∈ [target×0.8, target×1.2]
+PROCESS: Rédige section par section · vérifie ASL · estime Flesch · loop interne
+OUTPUT : Draft brut + asl_global + flesch_estimé + section_scores[] + word_count
+GATE   : ASL ≤ 20 mots/phrase ET long_sentence_ratio ≤ 20%
+         ET word_count ∈ [target×0.8, target×1.2]
          FAIL → STOP + sections KO + écart word count
 
-Formule Flesch_FR (Kandel & Moles, adapté financier) :
-  Flesch_section = 207 − (1.015 × ASL) − (73.6 × ASW)
-    ASL = mots / phrases
-    ASW = syllabes / mots
-  Flesch_global = Σ(Flesch_section_i × mots_i) / Σ(mots_i)
+Gate de lisibilité — métriques fiables pour LLM :
+  [PRIMARY — déterministe]
+  ASL_global = total_mots / total_phrases
+  GATE : ASL_global ≤ 20 mots/phrase
 
-Loop interne (si section_score < 40, max 1 pass par section) :
-  → couper phrases > 20 mots
-  → remplacer mots > 3 syllabes par alternatives plus courtes
-  → ajouter exemple numérique concret (raccourcit les abstractions)
+  long_sentence_ratio = (phrases > 25 mots / total_phrases) × 100
+  GATE : long_sentence_ratio ≤ 20%
+
+  [INDICATIF — approximatif, non bloquant]
+  Flesch_FR estimé = 207 − (1.015 × ASL) − (73.6 × ASW_estimé)
+    ASW_estimé : Claude estime les syllabes (marge ±5 pts acceptable)
+  Cible indicative ≥ 45 — signaler si < 40 mais ne pas bloquer
+
+Loop interne (si section ASL > 22 ou ratio > 25%, max 1 pass) :
+  → couper phrases > 20 mots en deux phrases distinctes
+  → remplacer mots > 3 syllabes par alternatives courtes
+  → ajouter exemple numérique concret
+
+Protection anti-pénalité IA (Google SpamBrain) — obligatoire :
+  ✓ ≥ 1 donnée exclusive plateforme InvestSaaS par section (non reproducible ailleurs)
+  ✓ ≥ 1 jugement éditorial non automatisable ("Contrairement à ce que suggèrent...")
+  ✓ Variation de ton entre sections (pas de style uniforme machine)
+  ✓ ≥ 1 tableau ou liste structurée avec données originales
 
 Word count check :
   PASS  : draft_words ∈ [target × 0.8, target × 1.2]
@@ -173,17 +214,21 @@ Interdits absolus dans le draft :
   ✗ "Performance garantie" / "rendement assuré"
   ✗ Données sans source citée
   ✗ Chiffres sans date de référence
+  ✗ Contenu générique reproducible par n'importe quel LLM sans données InvestSaaS
 
-GATE : flesch_global ≥ 45 ET word_count ∈ [target×0.8, target×1.2]
+GATE : ASL_global ≤ 20 ET long_sentence_ratio ≤ 20% ET word_count ∈ [±20%]
 ```
 
 ---
 
 ### M4 · SEO_Evaluator `[GATE TECHNIQUE → auto-retry ×2]`
+### M5 · EEEAT_Evaluator → peuvent être lancés EN PARALLÈLE sur le même draft
+### (invoquer dispatching-parallel-agents si les deux sont à exécuter)
 
 ```
-INPUT  : Draft complet
+INPUT  : Draft complet (post-M3)
 PROCESS: Calcule keyword_density · vérifie placement · ajustement auto si hors range
+         [M4 et M5 sont indépendants — parallélisables via dispatching-parallel-agents]
 OUTPUT : Draft ajusté + seo_metrics { density, placement_score, lsi_count }
 GATE   : density ∈ [1.2%, 1.8%] → PASS | hors range → retry ×2 → ⚠️ GATE_PARTIAL
 
@@ -195,7 +240,8 @@ keyword_density = (occurrences_keyword / total_words) × 100
   pos_intro      keyword dans les 100 premiers mots  ✓/✗
   pos_h2_min2    keyword dans ≥ 2 H2                ✓/✗
   pos_conclusion keyword dans § conclusion           ✓/✗
-  lsi_count      ≥ 5 termes LSI uniques              ✓/✗
+  lsi_count      ≥ 8 termes LSI uniques              ✓/✗
+  (pattern Clearscope : LSI basé sur top 10 résultats SERP, pas seulement top 3)
 
 SEO_placement_score = (checkpoints_OK / 5) × 100
 
@@ -290,17 +336,30 @@ PROCESS: Génère les fichiers Next.js 15 manquants (App Router + next-mdx-remot
 OUTPUT : liste fichiers + contenu complet
 GATE   : aucune — exécution déterministe
 
+⚠️ CONTRAINTE VERCEL : Vercel déploie depuis rootDirectory=frontend/ — tous les
+fichiers doivent être sous frontend/ pour être inclus dans le build de production.
+lib/blog.ts utilise process.cwd() = frontend/ en build → content/ doit être dedans.
+
 Fichiers générés si absents :
-  content/blog/                              ← créé à la racine du repo
-  content/blog/{slug}.mdx                    ← article final
+  frontend/content/blog/                     ← DANS frontend/ (pas racine repo)
+  frontend/content/blog/{slug}.mdx           ← article final
   frontend/src/app/blog/[slug]/page.tsx      ← generateMetadata + MDX render
   frontend/src/app/blog/layout.tsx           ← breadcrumb + nav blog
   frontend/src/app/blog/page.tsx             ← index articles public
-  frontend/src/lib/blog.ts                   ← getBlogPost / getAllBlogPosts
+  frontend/src/lib/blog.ts                   ← path: process.cwd()/content/blog
   frontend/src/components/blog/Callout.tsx
   frontend/src/components/blog/CTABanner.tsx
   frontend/src/components/blog/DataTable.tsx
   frontend/src/app/sitemap.ts                ← mis à jour avec le nouveau slug
+
+lib/blog.ts — path correct :
+  const BLOG_DIR = path.join(process.cwd(), 'content', 'blog')
+  (PAS path.join(process.cwd(), '..', 'content', 'blog') — incompatible Vercel)
+
+Post-génération — OBLIGATOIRE avant déploiement :
+  git add frontend/content/blog/ frontend/src/app/blog/ frontend/src/lib/blog.ts
+  git commit -m "feat(blog): scaffold + article {slug}"
+  git push origin master   ← Vercel déploie automatiquement depuis git
 
 Dépendances (première invocation uniquement) :
   cd frontend && npm install next-mdx-remote gray-matter
@@ -430,8 +489,23 @@ import { Disclaimer } from '@/components/ui/Disclaimer'
 |------|-------|----------------|-------|
 | **Pipeline complet** (défaut) | Brief Phase 2 complet | M1→M6 + M7 parallèle | Production hebdo |
 | **Module isolé** | Draft ou brief existant | Un module nommé | Re-validation gate précise |
-| **Audit article** | article.mdx publié | M4 + M5 + M6 | J+30 / J+90 loop Phase 3 |
+| **Audit article** | article.mdx publié | M4 + M5 + M6 + freshness | J+30 / J+90 loop Phase 3 |
 | **Scaffold seul** | slug + cluster | M7 uniquement | Init blog avant 1er article |
+| **Fast Track BRVM** | Brief allégé (keyword + PAA) | M2→M4→M6 + M7 | Articles data courts (≤ 600 mots) |
+
+**Mode Fast Track BRVM** (pattern Scale.ai / articles répétitifs) :
+  Déclencher pour : cours d'action, indices quotidiens, dividendes, données macro UEMOA
+  Pipeline allégé : M2 (outline fixe) → M4 (density check) → M6 (MDX render)
+  Skip : M1 (brief simplifié accepté), M3 (ASL check uniquement), M5 (E-E-A-T réduit)
+  Cible : livraison en 1 passe, < 600 mots, structured data BreadcrumbList + Article
+
+**Mode Audit — Content Decay check (Semrush pattern) :**
+  Si dateModified > 90j ET position GSC > 20 → flag DECAY_RISK
+  freshness_score :
+    dateModified < 30j → 100
+    dateModified 30-90j → 75
+    dateModified 90-180j → 50 + flag REFRESH_RECOMMENDED
+    dateModified > 180j → 25 + flag DECAY_RISK (republier ou fusionner)
 
 **Invocation module isolé :** "Lance M5 uniquement sur ce draft" → évalue E-E-A-T seul.
 
@@ -484,7 +558,9 @@ quality_score : {score}/100 — {interprétation}
 |--------|-----------------|-------------|---------|--------|
 | M1     | brief_score     | {X}/100     | ≥ 80    | ✅/⚠️  |
 | M2     | paa_coverage    | {X}%        | ≥ 90%   | ✅/⚠️  |
-| M3     | flesch_global   | {X}         | ≥ 45    | ✅/⚠️  |
+| M3     | asl_global      | {X} mots/ph | ≤ 20    | ✅/⚠️  |
+| M3     | long_sent_ratio | {X}%        | ≤ 20%   | ✅/⚠️  |
+| M3     | flesch_estimé   | {X} (indic.)| ≥ 45    | ℹ️     |
 | M3     | word_count      | {X}/{Y} mots| ±20%    | ✅/⚠️  |
 | M4     | keyword_density | {X}%        | 1.2–1.8 | ✅/⚠️  |
 | M5     | eeeat_score     | {X}/100     | ≥ 75    | ✅/⚠️  |
@@ -529,10 +605,15 @@ seo-strategist Phase 2 produit :
 
 - **quality_score ≥ 75 avant publication** — enrichissement obligatoire sinon
 - **Brief seo-strategist Phase 2 obligatoire** — jamais d'article ex nihilo
+  (mode dégradé : seuil M1 → 65 si DataForSEO absent)
 - **superpowers:verification-before-completion** avant chaque livraison MDX
 - **`<Disclaimer variant="inline" />`** systématique en fin d'article
 - **Aucune formulation conseil en investissement** (AMF-UMOA/CREPMF)
 - **`dateModified` à jour** dans JSON-LD à chaque modification d'article
 - **Cluster identifié avant rédaction** — pas d'article isolé hors topic cluster
-- **M7 génère l'infrastructure** — ne pas créer les fichiers blog manuellement
+- **M7 génère l'infrastructure dans `frontend/content/blog/`** — JAMAIS à la racine repo
+- **git commit obligatoire après M7** — Vercel ne déploie que ce qui est dans git
 - **Gates éditoriales = humain requis** — jamais de contournement automatique
+- **ASL ≤ 20 mots/phrase** gate primaire (déterministe) — Flesch indicatif uniquement
+- **Protection AI obligatoire** : ≥ 1 donnée exclusive InvestSaaS par section
+- **M4+M5 parallélisables** — invoquer dispatching-parallel-agents pour gains ~30%
